@@ -7,10 +7,10 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -280,13 +280,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 38),
-
-                // LOGO
                 logo(),
 
                 const SizedBox(height: 30),
-
-                // EMAIL
                 Align(
                   alignment: Alignment.centerLeft,
                   child: const Text(
@@ -315,8 +311,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // PASSWORD
                 Align(
                   alignment: Alignment.centerLeft,
                   child: const Text(
@@ -359,8 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 11),
-
-                // REMEMBER + FORGOT
                 Row(
                   children: [
                     SizedBox(
@@ -412,8 +404,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // LOGIN BUTTON
                 SizedBox(
                   width: double.infinity,
                   height: 43,
@@ -449,8 +439,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 17),
-
-                // OR
                 Row(
                   children: [
                     Expanded(
@@ -479,13 +467,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 15),
-
-                // GOOGLE
                 googleButton(),
 
                 const SizedBox(height: 22),
-
-                // SIGN UP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
