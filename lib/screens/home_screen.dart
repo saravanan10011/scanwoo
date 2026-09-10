@@ -1,59 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:quick_scanner/widgets/bottomnav.dart';
-import 'scanner_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:quick_scanner/screens/profile.dart';
+import '../widgets/bottomnav.dart';
+import 'exportscreen.dart';
 import 'history_screen.dart';
-
+import 'scanner_screen.dart';
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});  @override
+  const HomeScreen({super.key});
+  @override
   State<HomeScreen> createState() => HomeScreenState();
 }
-
 class HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
 
   void openScanner() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const ScannerScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const ScannerScreen()),
     );
   }
 
   void openHistory() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const ScanHistoryScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
+    );
+  }
+
+  void openExport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ExportScreen()),
+    );
+  }
+
+  void openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
 
   void onBottomNavSelected(int index) {
-    setState(() {
-      selectedIndex = index;
-    });
+    setState(() => selectedIndex = index);
 
     if (index == 1) {
       openHistory();
-    }
-
-    if (index == 2) {
-      openHistory();
-    }
-
-    if (index == 3) {
-      // Profile screen can be added later.
+    } else if (index == 2) {
+      openExport();
+    } else if (index == 3) {
+      openProfile();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
-
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF3038D8),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FB),
+        body: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 20),
           child: Column(
             children: [
@@ -62,11 +72,10 @@ class HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-
-      bottomNavigationBar: CommonBottomNav(
-        selectedIndex: selectedIndex,
-        onItemSelected: onBottomNavSelected,
+        bottomNavigationBar: CommonBottomNav(
+          selectedIndex: selectedIndex,
+          onItemSelected: onBottomNavSelected,
+        ),
       ),
     );
   }
@@ -74,13 +83,10 @@ class HomeScreenState extends State<HomeScreen> {
   Widget topSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 45, 20, 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFF3038D8),
-            Color(0xFF5146E5),
-          ],
+          colors: [Color(0xFF3038D8), Color(0xFF5146E5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -93,26 +99,19 @@ class HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Hello, Ajith 👋',
+            'Hello, User!',
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 4),
-
           const Text(
             'Good to see you!',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
-
           const SizedBox(height: 20),
-
           GestureDetector(
             onTap: openScanner,
             child: Container(
@@ -136,9 +135,7 @@ class HomeScreenState extends State<HomeScreen> {
                       size: 28,
                     ),
                   ),
-
                   const SizedBox(width: 14),
-
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,20 +147,14 @@ class HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         SizedBox(height: 4),
-
                         Text(
                           'Extract data in seconds',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 11,
-                          ),
+                          style: TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                       ],
                     ),
                   ),
-
                   const Icon(
                     Icons.arrow_forward_ios,
                     color: Color(0xFF4038D8),
@@ -187,18 +178,16 @@ class HomeScreenState extends State<HomeScreen> {
           Row(
             children: [
               Expanded(
-                child: _actionCard(
+                child: actionCard(
                   Icons.camera_alt_outlined,
                   'Scan with Camera',
                   'Capture new invoice',
                   openScanner,
                 ),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
-                child: _actionCard(
+                child: actionCard(
                   Icons.image_outlined,
                   'Pick from Gallery',
                   'Select from device',
@@ -207,66 +196,45 @@ class HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
           Row(
             children: [
               Expanded(
-                child: _actionCard(
+                child: actionCard(
                   Icons.history,
                   'View History',
                   'Previous scans',
                   openHistory,
                 ),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
-                child: _actionCard(
+                child: actionCard(
                   Icons.description_outlined,
                   'Export Records',
                   'Excel / PDF',
-                  openHistory,
+                  openExport,
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Recent Invoices',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-
               TextButton(
                 onPressed: openHistory,
                 child: const Text('View all →'),
               ),
             ],
           ),
-
-          _invoice(
-            'ABC Textiles',
-            'INV-1025 • 01 Sep 2026',
-            '₹3,465',
-          ),
-
-          _invoice(
-            'XYZ Mart',
-            'BILL-4567 • 28 Aug 2026',
-            '₹2,450',
-          ),
-
-          _invoice(
+          invoice('ABC Textiles', 'INV-1025 • 01 Sep 2026', '₹3,465'),
+          invoice('XYZ Mart', 'BILL-4567 • 28 Aug 2026', '₹2,450'),
+          invoice(
             'Sri Venkateshwara Traders',
             'INV-2201 • 25 Aug 2026',
             '₹1,890',
@@ -276,7 +244,7 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _actionCard(
+  Widget actionCard(
     IconData icon,
     String title,
     String subtitle,
@@ -294,14 +262,8 @@ class HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: const Color(0xFF4038D8),
-              size: 25,
-            ),
-
+            Icon(icon, color: const Color(0xFF4038D8), size: 25),
             const Spacer(),
-
             Text(
               title,
               style: const TextStyle(
@@ -309,15 +271,10 @@ class HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-
             const SizedBox(height: 3),
-
             Text(
               subtitle,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 10,
-              ),
+              style: const TextStyle(color: Colors.grey, fontSize: 10),
             ),
           ],
         ),
@@ -325,22 +282,13 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _invoice(
-    String company,
-    String details,
-    String amount,
-  ) {
+  Widget invoice(String company, String details, String amount) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 11,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Row(
         children: [
@@ -357,9 +305,7 @@ class HomeScreenState extends State<HomeScreen> {
               size: 19,
             ),
           ),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,20 +317,14 @@ class HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 3),
-
                 Text(
                   details,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 9,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 9),
                 ),
               ],
             ),
           ),
-
           Text(
             amount,
             style: const TextStyle(

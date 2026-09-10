@@ -16,8 +16,6 @@ class ScanHistoryService {
   static Future<void> initialize() async {
     await loadRecords();
   }
-
-  // SAVE IMAGE PERMANENTLY
   static Future<String> saveImagePermanently(
     File originalImage,
   ) async {
@@ -81,8 +79,6 @@ class ScanHistoryService {
     }
 
     final record = updatedRecords[index];
-
-    // Delete saved image
     try {
       final imageFile = File(record.imagePath);
 

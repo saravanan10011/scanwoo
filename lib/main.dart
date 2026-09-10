@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'screens/splash_screen.dart';
 import 'services/scan_history_service.dart';
 
@@ -11,6 +10,7 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

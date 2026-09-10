@@ -14,15 +14,12 @@ class EditRecordScreen extends StatefulWidget {
 }
 
 class EditRecordScreenState extends State<EditRecordScreen> {
-  late TextEditingController textController;
+  late final TextEditingController textController;
 
   @override
   void initState() {
     super.initState();
-
-    textController = TextEditingController(
-      text: widget.extractedText,
-    );
+    textController = TextEditingController(text: widget.extractedText);
   }
 
   @override
@@ -36,12 +33,11 @@ class EditRecordScreenState extends State<EditRecordScreen> {
 
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Text cannot be empty'),
-        ),
+        const SnackBar(content: Text('Text cannot be empty')),
       );
       return;
     }
+
     Navigator.pop(context, text);
   }
 
@@ -71,9 +67,7 @@ class EditRecordScreenState extends State<EditRecordScreen> {
                     color: primaryColor,
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
                 const Expanded(
                   child: Text(
                     'Review and edit extracted text',
@@ -85,18 +79,14 @@ class EditRecordScreenState extends State<EditRecordScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 20),
-
             Expanded(
               child: CustomTextField(
                 controller: textController,
                 hintText: 'Extracted text will appear here...',
               ),
             ),
-
             const SizedBox(height: 20),
-
             SizedBox(
               width: double.infinity,
               height: 54,
