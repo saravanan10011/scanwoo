@@ -12,38 +12,32 @@ class HomeScreen extends StatefulWidget {
 }
 class HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
-
   void openScanner() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ScannerScreen()),
     );
   }
-
   void openHistory() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
     );
   }
-
   void openExport() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ExportScreen()),
     );
   }
-
   void openProfile() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
-
   void onBottomNavSelected(int index) {
     setState(() => selectedIndex = index);
-
     if (index == 1) {
       openHistory();
     } else if (index == 2) {
@@ -52,7 +46,6 @@ class HomeScreenState extends State<HomeScreen> {
       openProfile();
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
