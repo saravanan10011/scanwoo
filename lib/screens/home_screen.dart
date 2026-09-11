@@ -1,51 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:quick_scanner/screens/profile.dart';
-import '../widgets/bottomnav.dart';
-import 'exportscreen.dart';
-import 'history_screen.dart';
 import 'scanner_screen.dart';
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final ValueChanged<int>? onNavigateToTab;
+
+  const HomeScreen({super.key, this.onNavigateToTab});
+
   @override
   State<HomeScreen> createState() => HomeScreenState();
 }
+
 class HomeScreenState extends State<HomeScreen> {
-  int selectedIndex = 0;
+  void goToTab(int i) {
+    widget.onNavigateToTab?.call(i);
+  }
+
   void openScanner() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ScannerScreen()),
     );
   }
-  void openHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-    );
-  }
-  void openExport() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ExportScreen()),
-    );
-  }
-  void openProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
-  }
-  void onBottomNavSelected(int index) {
-    setState(() => selectedIndex = index);
-    if (index == 1) {
-      openHistory();
-    } else if (index == 2) {
-      openExport();
-    } else if (index == 3) {
-      openProfile();
-    }
-  }
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -64,10 +41,6 @@ class HomeScreenState extends State<HomeScreen> {
               content(),
             ],
           ),
-        ),
-        bottomNavigationBar: CommonBottomNav(
-          selectedIndex: selectedIndex,
-          onItemSelected: onBottomNavSelected,
         ),
       ),
     );
@@ -197,7 +170,7 @@ class HomeScreenState extends State<HomeScreen> {
                   Icons.history,
                   'View History',
                   'Previous scans',
-                  openHistory,
+                  () => goToTab(1),
                 ),
               ),
               const SizedBox(width: 12),
@@ -206,25 +179,17 @@ class HomeScreenState extends State<HomeScreen> {
                   Icons.description_outlined,
                   'Export Records',
                   'Excel / PDF',
-                  openExport,
+                  () => goToTab(2),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Invoices',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: openHistory,
-                child: const Text('View all →'),
-              ),
-            ],
+          const Text(
+            'Recent Invoices',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: 12),
           invoice('ABC Textiles', 'INV-1025 • 01 Sep 2026', '₹3,465'),
           invoice('XYZ Mart', 'BILL-4567 • 28 Aug 2026', '₹2,450'),
           invoice(

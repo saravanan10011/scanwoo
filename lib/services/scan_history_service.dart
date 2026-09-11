@@ -11,16 +11,16 @@ class ScanHistoryService {
   static const String _storageKey = 'scan_history';
 
   static final ValueNotifier<List<ScanRecord>> recordsNotifier =
-      ValueNotifier([]);
+      ValueNotifier<List<ScanRecord>>([]);
 
   static Future<void> initialize() async {
     await loadRecords();
   }
+
   static Future<String> saveImagePermanently(
     File originalImage,
   ) async {
-    final directory =
-        await getApplicationDocumentsDirectory();
+    final directory = await getApplicationDocumentsDirectory();
 
     final imagesDirectory = Directory(
       '${directory.path}/scanned_images',
@@ -35,11 +35,9 @@ class ScanHistoryService {
     final fileName =
         'scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    final newPath =
-        '${imagesDirectory.path}/$fileName';
+    final newPath = '${imagesDirectory.path}/$fileName';
 
-    final savedImage =
-        await originalImage.copy(newPath);
+    final savedImage = await originalImage.copy(newPath);
 
     return savedImage.path;
   }
@@ -48,8 +46,7 @@ class ScanHistoryService {
     required String text,
     required File imageFile,
   }) async {
-    final savedImagePath =
-        await saveImagePermanently(imageFile);
+    final savedImagePath = await saveImagePermanently(imageFile);
 
     final updatedRecords =
         List<ScanRecord>.from(recordsNotifier.value);
@@ -68,6 +65,24 @@ class ScanHistoryService {
     await _saveRecords();
   }
 
+  static Future<void> updateRecord(
+    int index,
+    ScanRecord record,
+  ) async {
+    final updatedRecords =
+        List<ScanRecord>.from(recordsNotifier.value);
+
+    if (index < 0 || index >= updatedRecords.length) {
+      return;
+    }
+
+    updatedRecords[index] = record;
+
+    recordsNotifier.value = updatedRecords;
+
+    await _saveRecords();
+  }
+
   static Future<void> deleteRecord(
     int index,
   ) async {
@@ -79,6 +94,7 @@ class ScanHistoryService {
     }
 
     final record = updatedRecords[index];
+
     try {
       final imageFile = File(record.imagePath);
 
@@ -107,18 +123,15 @@ class ScanHistoryService {
 
     recordsNotifier.value = [];
 
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
     await prefs.remove(_storageKey);
   }
 
   static Future<void> loadRecords() async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-    final String? data =
-        prefs.getString(_storageKey);
+    final String? data = prefs.getString(_storageKey);
 
     if (data == null || data.isEmpty) {
       recordsNotifier.value = [];
@@ -126,30 +139,28 @@ class ScanHistoryService {
     }
 
     try {
-      final List<dynamic> jsonList =
-          jsonDecode(data);
+      final List<dynamic> jsonList = jsonDecode(data);
 
-      recordsNotifier.value =
-          jsonList
-              .map(
-                (item) => ScanRecord.fromJson(item),
-              )
-              .toList();
+      recordsNotifier.value = jsonList
+          .map(
+            (item) => ScanRecord.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
     } catch (_) {
       recordsNotifier.value = [];
     }
   }
 
   static Future<void> _saveRecords() async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-    final data =
-        recordsNotifier.value
-            .map(
-              (record) => record.toJson(),
-            )
-            .toList();
+    final data = recordsNotifier.value
+        .map(
+          (record) => record.toJson(),
+        )
+        .toList();
 
     await prefs.setString(
       _storageKey,

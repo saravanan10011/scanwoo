@@ -1,34 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:quick_scanner/screens/profile.dart';
 import '../models/scan_record.dart';
 import '../services/scan_history_service.dart';
 import '../utils/helpers.dart';
-import '../widgets/bottomnav.dart';
 import '../widgets/exportsheet.dart';
-import 'history_screen.dart';
 
 const primary = Color(0xFF4038D8);
 const background = Color(0xFFF5F7FB);
 
 class ExportScreen extends StatelessWidget {
   const ExportScreen({super.key});
-
-  void onBottomNavSelected(BuildContext context, int index) {
-    if (index == 2) return;
-    if (index == 0) {
-      Navigator.pop(context);
-    } else if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-      );
-    } else if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ProfileScreen()),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,12 +71,6 @@ class ExportScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-      bottomNavigationBar: Builder(
-        builder: (innerContext) => CommonBottomNav(
-          selectedIndex: 2,
-          onItemSelected: (i) => onBottomNavSelected(innerContext, i),
-        ),
       ),
     );
   }

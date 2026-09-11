@@ -1,15 +1,25 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:quick_scanner/screens/edit_screen.dart';
+import 'package:quick_scanner/screens/exportscreen.dart';
+import 'package:quick_scanner/screens/history_screen.dart';
+import 'package:quick_scanner/screens/home_screen.dart';
+import 'package:quick_scanner/screens/profile.dart';
+import 'package:quick_scanner/widgets/bottomnav.dart';
 import 'package:quick_scanner/widgets/exportsheet.dart';
 import '../models/scan_record.dart';
 import '../services/scan_history_service.dart';
+
 const primary = Color(0xFF4038D8);
 const background = Color(0xFFF5F7FB);
 
 class ScanPreviewScreen extends StatefulWidget {
   final ScanRecord record;
-  const ScanPreviewScreen({super.key, required this.record});
+
+  const ScanPreviewScreen({
+    super.key,
+    required this.record,
+  });
 
   @override
   State<ScanPreviewScreen> createState() => ScanPreviewScreenState();
@@ -28,33 +38,85 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
     final updatedText = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditRecordScreen(extractedText: record.text),
+        builder: (_) => EditRecordScreen(
+          extractedText: record.text,
+        ),
       ),
     );
 
-    if (updatedText == null || updatedText == record.text) return;
+    if (!mounted || updatedText == null || updatedText == record.text) {
+      return;
+    }
 
     final records = ScanHistoryService.recordsNotifier.value;
-    final index = records.indexOf(record);
+    final index = records.indexOf(widget.record);
 
     if (index == -1) return;
 
-    final updated = ScanRecord(
+    final updatedRecord = ScanRecord(
       text: updatedText,
       imagePath: record.imagePath,
       createdAt: record.createdAt,
     );
 
-    final newList = List<ScanRecord>.from(records);
-    newList[index] = updated;
-    ScanHistoryService.recordsNotifier.value = newList;
-
-    setState(() => record = updated);
+    await ScanHistoryService.updateRecord(
+      index,
+      updatedRecord,
+    );
 
     if (!mounted) return;
+
+    setState(() {
+      record = updatedRecord;
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Record updated')),
+      const SnackBar(
+        content: Text('Record updated'),
+      ),
     );
+  }
+
+  void navigateToTab(int index) {
+    if (index == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ScanHistoryScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (index == 0) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomeScreen(),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (index == 2) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ExportScreen(),
+        ),
+      );
+      return;
+    }
+
+    if (index == 3) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
+        ),
+      );
+    }
   }
 
   @override
@@ -64,14 +126,18 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Scan Preview'),
+        title: const Text(
+          'Scan Preview',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         backgroundColor: background,
         elevation: 0,
         foregroundColor: Colors.black,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit',
             onPressed: openEdit,
           ),
         ],
@@ -93,13 +159,17 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
             else
               _missingImage(),
             const SizedBox(height: 20),
-            Text('Scanned Date',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Scanned Date',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 5),
             Text(_formatDateTime(record.createdAt)),
             const SizedBox(height: 20),
-            Text('Extracted Text',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Extracted Text',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 10),
             Container(
               width: double.infinity,
@@ -107,13 +177,18 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE7E7EE)),
+                border: Border.all(
+                  color: const Color(0xFFE7E7EE),
+                ),
               ),
               child: SelectableText(
                 record.text.isEmpty
                     ? 'No text extracted from this scan.'
                     : record.text,
-                style: const TextStyle(fontSize: 15, height: 1.5),
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.5,
+                ),
               ),
             ),
             const SizedBox(height: 30),
@@ -123,10 +198,11 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: primary,
-                      side: const BorderSide(color: primary),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      side: const BorderSide(
+                        color: primary,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
                       ),
                     ),
                     icon: const Icon(Icons.edit_outlined),
@@ -140,20 +216,29 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
                       ),
                     ),
                     icon: const Icon(Icons.ios_share),
                     label: const Text('Export'),
-                    onPressed: () => showExportSheet(context, [record]),
+                    onPressed: () {
+                      showExportSheet(
+                        context,
+                        [record],
+                      );
+                    },
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 30),
           ],
         ),
+      ),
+      bottomNavigationBar: CommonBottomNav(
+        selectedIndex: 1,
+        onItemSelected: navigateToTab,
       ),
     );
   }
@@ -169,7 +254,10 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.image_not_supported, size: 50),
+          Icon(
+            Icons.image_not_supported,
+            size: 50,
+          ),
           SizedBox(height: 10),
           Text('Image not available'),
         ],
@@ -177,11 +265,12 @@ class ScanPreviewScreenState extends State<ScanPreviewScreen> {
     );
   }
 
-  static String _formatDateTime(DateTime date) {
+  String _formatDateTime(DateTime date) {
     final d = date.day.toString().padLeft(2, '0');
     final m = date.month.toString().padLeft(2, '0');
     final h = date.hour.toString().padLeft(2, '0');
     final min = date.minute.toString().padLeft(2, '0');
+
     return '$d/$m/${date.year} $h:$min';
   }
 }

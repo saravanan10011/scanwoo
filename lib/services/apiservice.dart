@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'https://api.quickscanner.com/v1';
+  static const String baseUrl = 'https://accountingoo.wimbgo.com/api/client';
   final http.Client _client = http.Client();
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',

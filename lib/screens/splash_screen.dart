@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quick_scanner/screens/mainscreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
   @override
   State<SplashScreen> createState() => SplashScreenState();
 }
 
 class SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const primaryColor = Color(0xFF5146F5);
+  static const primaryColor = Color(0xFF4038D8);
+
   late AnimationController controller;
   late Animation<double> fade;
   late Animation<double> scale;
@@ -51,16 +56,30 @@ class SplashScreenState extends State<SplashScreen>
 
     controller.forward();
 
-    Timer(const Duration(seconds: 5), () {
-      if (!mounted) return;
+    Timer(const Duration(seconds: 2), checkLogin);
+  }
 
+  Future<void> checkLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (!mounted) return;
+
+    if (isLoggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScreen(),
+        ),
+      );
+    } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => const LoginScreen(),
         ),
       );
-    });
+    }
   }
 
   @override
@@ -71,23 +90,16 @@ class SplashScreenState extends State<SplashScreen>
 
   Widget invoiceLogo() {
     return Container(
-      width: 88,
-      height: 88,
+      width: 90,
+      height: 90,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
       ),
       child: const Icon(
-        Icons.description_outlined,
+        Icons.document_scanner_rounded,
+        size: 48,
         color: primaryColor,
-        size: 53,
       ),
     );
   }
@@ -95,99 +107,50 @@ class SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF4F46E5),
-              Color(0xFF5146F5),
-              Color(0xFF5140E8),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: fade,
-            child: ScaleTransition(
-              scale: scale,
-              child: Column(
-                children: [
-                  const Spacer(flex: 3),
-                  invoiceLogo(),
-                  const SizedBox(height: 22),
-                  const Text(
-                    ' InvoiceScan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -.5,
-                    ),
+      backgroundColor: primaryColor,
+      body: Center(
+        child: FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(
+            scale: scale,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                invoiceLogo(),
+                const SizedBox(height: 24),
+                const Text(
+                  'Quick Scanner',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Scan  •  Extract  •  Manage',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      letterSpacing: .4,
-                    ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Scan. Edit. Export.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.white70,
                   ),
-                  const Spacer(flex: 3),
-                  const Text(
-                    'Smart Document Processing',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-
-                  const SizedBox(height: 3),
-
-                  const Text(
-                    'at Your Fingertips',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  AnimatedBuilder(
-                    animation: loading,
-                    builder: (context, child) {
-                      return Container(
-                        width: 100,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(.25),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: loading.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 25),
-                ],
-              ),
+                ),
+                const SizedBox(height: 40),
+                AnimatedBuilder(
+                  animation: loading,
+                  builder: (context, child) {
+                    return SizedBox(
+                      width: 100,
+                      child: LinearProgressIndicator(
+                        value: loading.value,
+                        minHeight: 4,
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        backgroundColor: Colors.white30,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),

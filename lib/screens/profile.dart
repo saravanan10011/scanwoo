@@ -1,30 +1,12 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottomnav.dart';
-import 'exportscreen.dart';
-import 'history_screen.dart';
+import 'package:quick_scanner/controller/auth_controller.dart';
+import 'package:quick_scanner/screens/login_screen.dart';
 
 const primary = Color(0xFF4038D8);
 const background = Color(0xFFF5F7FB);
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  void onBottomNavSelected(BuildContext context, int index) {
-    if (index == 3) return;
-    if (index == 0) {
-      Navigator.pop(context);
-    } else if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-      );
-    } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ExportScreen()),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +18,10 @@ class ProfileScreen extends StatelessWidget {
         foregroundColor: Colors.black,
         title: const Text(
           'Profile',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -46,22 +31,31 @@ class ProfileScreen extends StatelessWidget {
             profileHeader(),
             const SizedBox(height: 20),
             menuGroup([
-              menuItem(Icons.settings_outlined, 'Account Settings'),
-              menuItem(Icons.lock_outline, 'Change Password'),
-              menuItem(Icons.notifications_none_outlined,
-                  'Notification Settings'),
-              menuItem(Icons.help_outline, 'Help & Support'),
-              menuItem(Icons.info_outline, 'About App', showDivider: false),
+              menuItem(
+                Icons.settings_outlined,
+                'Account Settings',
+              ),
+              menuItem(
+                Icons.lock_outline,
+                'Change Password',
+              ),
+              menuItem(
+                Icons.notifications_none_outlined,
+                'Notification Settings',
+              ),
+              menuItem(
+                Icons.help_outline,
+                'Help & Support',
+              ),
+              menuItem(
+                Icons.info_outline,
+                'About App',
+                showDivider: false,
+              ),
             ]),
             const SizedBox(height: 20),
             logoutButton(context),
           ],
-        ),
-      ),
-      bottomNavigationBar: Builder(
-        builder: (innerContext) => CommonBottomNav(
-          selectedIndex: 3,
-          onItemSelected: (i) => onBottomNavSelected(innerContext, i),
         ),
       ),
     );
@@ -78,6 +72,11 @@ class ProfileScreen extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
+          child: const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 30,
+          ),
         ),
         const SizedBox(width: 14),
         const Column(
@@ -85,12 +84,18 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Text(
               'User',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             SizedBox(height: 4),
             Text(
               'user@gmail.com',
-              style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF666666),
+              ),
             ),
           ],
         ),
@@ -111,7 +116,9 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(children: items),
+      child: Column(
+        children: items,
+      ),
     );
   }
 
@@ -123,7 +130,11 @@ class ProfileScreen extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(icon, color: const Color(0xFF444444), size: 22),
+          leading: Icon(
+            icon,
+            color: const Color(0xFF444444),
+            size: 22,
+          ),
           title: Text(
             title,
             style: const TextStyle(
@@ -163,33 +174,66 @@ class ProfileScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        icon: const Icon(Icons.logout, size: 20),
+        icon: const Icon(
+          Icons.logout,
+          size: 20,
+        ),
         label: const Text(
           'Logout',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        onPressed: () => _confirmLogout(context),
+        onPressed: () => confirmLogout(context),
       ),
     );
   }
 
-  void _confirmLogout(BuildContext context) {
+  void confirmLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text(
+            'Are you sure you want to logout?',
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+
+                final authController = AuthController();
+
+                await authController.logout();
+
+                if (!context.mounted) return;
+
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(),
+                  ),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

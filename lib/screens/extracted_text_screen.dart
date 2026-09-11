@@ -14,10 +14,10 @@ class ExtractedTextScreen extends StatefulWidget {
   });
 
   @override
-  State<ExtractedTextScreen> createState() => _ExtractedTextScreenState();
+  State<ExtractedTextScreen> createState() => ExtractedTextScreenState();
 }
 
-class _ExtractedTextScreenState extends State<ExtractedTextScreen> {
+class ExtractedTextScreenState extends State<ExtractedTextScreen> {
   late final TextEditingController _textController;
   bool _isSaving = false;
 

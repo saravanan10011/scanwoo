@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:quick_scanner/screens/extracted_text_screen.dart';
 import '../models/scan_record.dart';
 import '../services/scan_history_service.dart';
-import '../widgets/bottomnav.dart';
 import '../widgets/record_card.dart';
-import 'exportscreen.dart';
-import 'preview_screen.dart';
 
 const primary = Color(0xFF4038D8);
 const background = Color(0xFFF5F7FB);
@@ -22,29 +20,43 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
 
   List<ScanRecord> applyFilter(List<ScanRecord> records) {
     final now = DateTime.now();
-    return records.where((r) {
-      if (query.isNotEmpty &&
-          !r.text.toLowerCase().contains(query.toLowerCase())) {
+    final search = query.trim().toLowerCase();
+
+    return records.where((record) {
+      final text = record.text.toLowerCase();
+
+      if (search.isNotEmpty && !text.contains(search)) {
         return false;
       }
-      final days = now.difference(r.createdAt).inDays;
-      if (filter == 'Today') return days == 0;
-      if (filter == 'This Week') return days <= 7;
-      if (filter == 'This Month') return days <= 30;
+
+      final days = now.difference(record.createdAt).inDays;
+
+      if (filter == 'Today') {
+        return days == 0;
+      }
+
+      if (filter == 'This Week') {
+        return days >= 0 && days <= 7;
+      }
+
+      if (filter == 'This Month') {
+        return days >= 0 && days <= 30;
+      }
+
       return true;
     }).toList();
   }
 
-  void onBottomNavSelected(int index) {
-    if (index == 1) return;
-    if (index == 0) {
-      Navigator.pop(context);
-    } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ExportScreen()),
-      );
-    }
+  void openExtractedText(ScanRecord record) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExtractedTextScreen(
+          extractedText: record.text,
+          imagePath: record.imagePath,
+        ),
+      ),
+    );
   }
 
   @override
@@ -55,15 +67,23 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
         backgroundColor: background,
         elevation: 0,
         foregroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Invoice History',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: ValueListenableBuilder<List<ScanRecord>>(
         valueListenable: ScanHistoryService.recordsNotifier,
         builder: (_, records, __) {
           final list = applyFilter(records);
+
           return Column(
             children: [
               _searchBar(),
@@ -72,23 +92,29 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
               const SizedBox(height: 12),
               Expanded(
                 child: list.isEmpty
-                    ? const Center(child: Text('No invoices yet'))
+                    ? _emptyState()
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(
+                          16,
+                          0,
+                          16,
+                          16,
+                        ),
                         itemCount: list.length,
-                        itemBuilder: (_, i) {
-                          final r = list[i];
-                          final idx = records.indexOf(r);
+                        itemBuilder: (_, index) {
+                          final record = list[index];
+                          final originalIndex = records.indexOf(record);
+
                           return RecordCard(
-                            record: r,
-                            onEdit: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ScanPreviewScreen(record: r),
-                              ),
-                            ),
-                            onDelete: () =>
-                                ScanHistoryService.deleteRecord(idx),
+                            record: record,
+                            onEdit: () => openExtractedText(record),
+                            onDelete: () {
+                              if (originalIndex >= 0) {
+                                ScanHistoryService.deleteRecord(
+                                  originalIndex,
+                                );
+                              }
+                            },
                           );
                         },
                       ),
@@ -97,27 +123,53 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
           );
         },
       ),
-      bottomNavigationBar: CommonBottomNav(
-        selectedIndex: 1,
-        onItemSelected: onBottomNavSelected,
-      ),
     );
   }
 
   Widget _searchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: TextField(
-        onChanged: (v) => setState(() => query = v),
+        onChanged: (value) {
+          setState(() {
+            query = value;
+          });
+        },
         decoration: InputDecoration(
           hintText: 'Search invoices...',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(
+            Icons.search,
+            color: Color(0xFF777777),
+          ),
+          suffixIcon: query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    setState(() {
+                      query = '';
+                    });
+                  },
+                )
+              : null,
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(
+              color: primary,
+              width: 1.2,
+            ),
           ),
         ),
       ),
@@ -125,7 +177,13 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
   }
 
   Widget _filterChips() {
-    const filters = ['All', 'Today', 'This Week', 'This Month'];
+    const filters = [
+      'All',
+      'Today',
+      'This Week',
+      'This Month',
+    ];
+
     return SizedBox(
       height: 40,
       child: ListView.separated(
@@ -133,31 +191,92 @@ class ScanHistoryScreenState extends State<ScanHistoryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final f = filters[i];
-          final active = f == filter;
+        itemBuilder: (_, index) {
+          final currentFilter = filters[index];
+          final active = currentFilter == filter;
+
           return GestureDetector(
-            onTap: () => setState(() => filter = f),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            onTap: () {
+              setState(() {
+                filter = currentFilter;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 10,
+              ),
               decoration: BoxDecoration(
                 color: active ? primary : Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: active ? primary : const Color(0xFFE7E7EE),
+                  color: active
+                      ? primary
+                      : const Color(0xFFE7E7EE),
                 ),
               ),
               child: Text(
-                f,
+                currentFilter,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: active ? Colors.white : const Color(0xFF666666),
+                  color: active
+                      ? Colors.white
+                      : const Color(0xFF666666),
                 ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.receipt_long_outlined,
+                size: 34,
+                color: primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              query.trim().isNotEmpty
+                  ? 'No invoices found'
+                  : 'No invoices yet',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              query.trim().isNotEmpty
+                  ? 'Try searching with another keyword.'
+                  : 'Your saved invoices will appear here.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
