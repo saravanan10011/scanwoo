@@ -11,6 +11,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:quick_scanner/networks/data_service.dart';
 import 'package:quick_scanner/utils/const.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HistoryController extends GetxController {
   final isLoading = false.obs;
@@ -124,36 +126,100 @@ class HistoryController extends GetxController {
     return all;
   }
 
-  Future<void> downloadInvoicePdf(int invoiceId) async {
-    final url = Uri.parse('${APICalls.baseUrl}/invoices/$invoiceId/download');
+  final isDownloading = false.obs;
+
+  /// format: 'pdf' or 'csv'. Adjust the query param to match your backend.
+  Future<void> downloadInvoice(int invoiceId, {required String format}) async {
+    if (isDownloading.value) return;
+    isDownloading.value = true;
 
     try {
+      final url = Uri.parse(
+        '${APICalls.baseUrl}/invoices/$invoiceId/download?format=$format',
+      );
+
       final response = await http.get(
         url,
         headers: {
           'Authorization': 'Bearer ${tokenDataService.accessToken}',
-          'Accept': 'application/pdf, text/csv, */*',
+          'Accept': format == 'pdf' ? 'application/pdf' : 'text/csv',
         },
       );
 
       if (response.statusCode != 200) {
+        _toast('Download failed (${response.statusCode})', isError: true);
         return;
       }
 
       final bytes = response.bodyBytes;
 
-      // A real PDF always starts with "%PDF"
+      // Trust the actual bytes, not the requested format
       final isPdf =
-          bytes.length > 4 && String.fromCharCodes(bytes.take(4)) == '%PDF';
-
+          bytes.length >= 4 && String.fromCharCodes(bytes.take(4)) == '%PDF';
       final ext = isPdf ? 'pdf' : 'csv';
 
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/invoice-$invoiceId.$ext');
-      await file.writeAsBytes(bytes);
-      // ignore: empty_catches
-    } catch (e) {}
+      await file.writeAsBytes(bytes, flush: true);
+
+      _toast('Invoice downloaded');
+
+      // Option A: open it in a viewer app
+      final result = await OpenFilex.open(file.path);
+
+      // Option B (fallback): let the user save/share it to Files, Drive, etc.
+      if (result.type != ResultType.done) {
+        await Share.shareXFiles([XFile(file.path)]);
+      }
+    } catch (e, s) {
+      log('Download error: $e\n$s');
+      _toast('Something went wrong while downloading', isError: true);
+    } finally {
+      isDownloading.value = false;
+    }
   }
+
+  void _toast(String msg, {bool isError = false}) {
+    final ctx = Get.context;
+    if (ctx == null) return;
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        backgroundColor: isError ? Colors.red : Colors.green,
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  // Future<void> downloadInvoicePdf(int invoiceId) async {
+  //   final url = Uri.parse('${APICalls.baseUrl}/invoices/$invoiceId/download');
+
+  //   try {
+  //     final response = await http.get(
+  //       url,
+  //       headers: {
+  //         'Authorization': 'Bearer ${tokenDataService.accessToken}',
+  //         'Accept': 'application/pdf, text/csv, */*',
+  //       },
+  //     );
+
+  //     if (response.statusCode != 200) {
+  //       return;
+  //     }
+
+  //     final bytes = response.bodyBytes;
+
+  //     // A real PDF always starts with "%PDF"
+  //     final isPdf =
+  //         bytes.length > 4 && String.fromCharCodes(bytes.take(4)) == '%PDF';
+
+  //     final ext = isPdf ? 'pdf' : 'csv';
+
+  //     final dir = await getApplicationDocumentsDirectory();
+  //     final file = File('${dir.path}/invoice-$invoiceId.$ext');
+  //     await file.writeAsBytes(bytes);
+  //     // ignore: empty_catches
+  //   } catch (e) {}
+  // }
 
   Future<void> fetchInvoices() async {
     isLoading.value = true;

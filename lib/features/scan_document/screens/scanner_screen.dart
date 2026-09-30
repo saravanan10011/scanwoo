@@ -321,10 +321,6 @@ class ScannerScreen extends StatelessWidget {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Body
-  // ---------------------------------------------------------------------
-
   Widget _preview(ScannerScreenController c) {
     return Container(
       height: _sh(300),

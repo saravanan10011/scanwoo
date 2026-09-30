@@ -14,9 +14,8 @@ const Color _background = Color(0xFFF5F7FB);
 const Color _textDark = Color(0xFF1C1C28);
 const Color _textMuted = Color(0xFF7A7A8C);
 const Color _border = Color(0xFFE7E7EE);
+double _sw(double px) => Get.width * (px / 375);
 
-/// args: [sourcePath, outPath, angle]
-/// Runs in a background isolate so large photos don't freeze the UI.
 String _rotateInIsolate(List<String> args) {
   final bytes = File(args[0]).readAsBytesSync();
   final decoded = img.decodeImage(bytes);
@@ -196,16 +195,42 @@ class CropAdjustScreen extends StatelessWidget {
             ),
             Align(
               alignment: Alignment.centerLeft,
-              child: IconButton(
-                onPressed: () => Get.back(),
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 18,
-                  color: Colors.white,
-                ),
-              ),
+              child: _circleIconButton(Icons.arrow_back_ios_new, () {
+                Get.back();
+              }),
+              // IconButton(
+              //   onPressed: () => Get.back(),
+              //   icon: const Icon(
+              //     Icons.arrow_back_ios_new,
+              //     size: 18,
+              //     color: Colors.white,
+              //   ),
+              // ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _circleIconButton(IconData icon, VoidCallback onTap) {
+    final size = _sw(40);
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.15),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white24, width: 1),
+          ),
+          child: Icon(icon, size: _sw(19), color: Colors.white),
         ),
       ),
     );

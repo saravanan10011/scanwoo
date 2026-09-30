@@ -158,7 +158,9 @@ class ScanHistoryScreen extends StatelessWidget {
                       onImages:
                           () => Get.dialog(InvoiceImagesDialog(invoice: inv)),
                       // was hard-coded to 104 -> use the tapped invoice
-                      onDownload: () => c.downloadInvoicePdf(inv.id),
+                      onDownload:
+                          () => c.downloadInvoice(inv.id, format: 'csv'),
+
                       onEdit:
                           () => Get.to(
                             () => EditRawTextScreen(
@@ -190,6 +192,55 @@ class ScanHistoryScreen extends StatelessWidget {
               child: _paginationBar(side, cur, pages, offset, list.length),
             ),
         ],
+      ),
+    );
+  }
+
+  void _pickFormat(int invoiceId) {
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: _sh(8)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(_sw(20))),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.all(_sw(12)),
+                child: Text(
+                  'Download as',
+                  style: TextStyle(
+                    fontSize: _sp(15),
+                    fontWeight: FontWeight.w800,
+                    color: _textDark,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.picture_as_pdf_rounded,
+                  color: primary,
+                ),
+                title: const Text('PDF'),
+                onTap: () {
+                  Get.back();
+                  c.downloadInvoice(invoiceId, format: 'pdf');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.table_chart_rounded, color: primary),
+                title: const Text('CSV'),
+                onTap: () {
+                  Get.back();
+                  c.downloadInvoice(invoiceId, format: 'csv');
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
