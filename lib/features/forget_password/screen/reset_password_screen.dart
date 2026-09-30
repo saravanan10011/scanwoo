@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/forget_password/logic/forget_password_view_model.dart';
@@ -11,20 +12,18 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final ForgetPasswordViewModel _passwordViewModel = Get.put(
-    ForgetPasswordViewModel(),
-  );
+  final ForgetPasswordViewModel _passwordViewModel = Get.find<ForgetPasswordViewModel>();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   // ---- Design tokens (matches ForgetPasswordScreen / LoginScreen) ------
-  static const Color primary = Color(0xFF4F46E5); // indigo-600
-  static const Color primaryDark = Color(0xFF4338CA); // indigo-700
-  static const Color primaryLight = Color(0xFF7C74F0); // lighter accent
-  static const Color textPrimary = Color(0xFF111827); // gray-900
-  static const Color textSecondary = Color(0xFF6B7280); // gray-500
-  static const Color fieldFill = Color(0xFFF9FAFB); // gray-50
-  static const Color scaffoldBg = Color(0xFFF3F4F6); // gray-100
+  static const Color primary = ColorConstants.indigo; // indigo-600
+  static const Color primaryDark = ColorConstants.indigoDark; // indigo-700
+  static const Color primaryLight = ColorConstants.indigoLight; // lighter accent
+  static const Color textPrimary = ColorConstants.gray900; // gray-900
+  static const Color textSecondary = ColorConstants.gray500; // gray-500
+  static const Color fieldFill = ColorConstants.grayFill; // gray-50
+  static const Color scaffoldBg = ColorConstants.grayBackground; // gray-100
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +86,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ColorConstants.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white, width: 1),
+        border: Border.all(color: ColorConstants.white, width: 1),
         boxShadow: [
           BoxShadow(
             color: primary.withValues(alpha: 0.08),
@@ -97,7 +96,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             offset: const Offset(0, 14),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: ColorConstants.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -222,11 +221,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+        borderSide: const BorderSide(color: ColorConstants.redAccent, width: 1.2),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.6),
+        borderSide: const BorderSide(color: ColorConstants.redAccent, width: 1.6),
       ),
     );
   }
@@ -367,10 +366,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     }
                   },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            shadowColor: Colors.transparent,
+            backgroundColor: ColorConstants.transparent,
+            disabledBackgroundColor: ColorConstants.transparent,
+            foregroundColor: ColorConstants.white,
+            shadowColor: ColorConstants.transparent,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -379,7 +378,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             overlayColor: WidgetStateProperty.resolveWith(
               (states) =>
                   states.contains(WidgetState.pressed)
-                      ? Colors.white.withValues(alpha: 0.1)
+                      ? ColorConstants.white.withValues(alpha: 0.1)
                       : null,
             ),
           ),
@@ -390,7 +389,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
-                      color: Colors.white,
+                      color: ColorConstants.white,
                     ),
                   )
                   : Row(

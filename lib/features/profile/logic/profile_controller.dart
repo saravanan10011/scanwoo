@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -51,7 +52,7 @@ class ProfileController extends GetxController {
         await fetchdashboard();
         ScaffoldMessenger.of(Get.context!).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green,
+            backgroundColor: ColorConstants.green,
 
             content: const Text("Profile updated successfully."),
             behavior: SnackBarBehavior.floating,
@@ -90,7 +91,7 @@ class ProfileController extends GetxController {
 
         ScaffoldMessenger.of(Get.context!).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green,
+            backgroundColor: ColorConstants.green,
 
             content: const Text("Password updated successfully."),
             behavior: SnackBarBehavior.floating,
@@ -179,6 +180,7 @@ class ProfileController extends GetxController {
   @override
   void onClose() {
     currentController.dispose();
+    nameController.dispose(); // add this
     newController.dispose();
     confirmController.dispose();
     super.onClose();

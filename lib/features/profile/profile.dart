@@ -1,21 +1,18 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:quick_scanner/features/login_screen/screen/login_screen.dart';
 import 'package:quick_scanner/features/profile/delete_screen.dart';
 import 'package:quick_scanner/features/profile/logic/profile_controller.dart';
 import 'package:quick_scanner/routes_list.dart';
 import 'package:quick_scanner/services/models/scan_record.dart';
 import 'package:quick_scanner/networks/data_service.dart';
 
-const primary = Color(0xFF4038D8);
-const primaryDark = Color(0xFF211F8C);
-const accent = Color(0xFF7B79FF);
-const background = Color(0xFFF5F7FB);
-const _ink = Color(0xFF1A1A1A);
-const _muted = Color(0xFF9A9A9A);
-const _danger = Color(0xFFE5484D);
-const _tint = Color(0xFFF3F2FF);
+const primary = ColorConstants.primary;
+const primaryDark = ColorConstants.primaryDeep;
+const accent = ColorConstants.accent;
+const background = ColorConstants.background;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,7 +23,7 @@ class ProfileScreen extends StatefulWidget {
 
 class ProfileScreenState extends State<ProfileScreen> {
   final tokenDataService = Get.find<TokenDataServiceImp>();
-  final ProfileController _profileController = Get.put(ProfileController());
+  final ProfileController _profileController = Get.find<ProfileController>();
 
   String get initials {
     final parts = _profileController.userName.value.trim().split(
@@ -39,36 +36,36 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: background,
-      body: SingleChildScrollView(
-        // physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            Obx(() => header(context)),
-            Transform.translate(
-              offset: const Offset(0, -40),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  0,
-                  20,
-                  MediaQuery.of(context).padding.bottom,
+    return Obx(
+      () => Scaffold(
+        backgroundColor: background,
+        body: SingleChildScrollView(
+          // physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              header(context),
+              Transform.translate(
+                offset: const Offset(0, -40),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    MediaQuery.of(context).padding.bottom,
+                  ),
+                  child:
+                      _profileController.isLoading.value
+                          ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 64),
+                            child: Center(
+                              child: CircularProgressIndicator(color: primary),
+                            ),
+                          )
+                          : content(context),
                 ),
-                child: Obx(() {
-                  if (_profileController.isLoading.value) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 64),
-                      child: Center(
-                        child: CircularProgressIndicator(color: primary),
-                      ),
-                    );
-                  }
-                  return content(context);
-                }),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -82,7 +79,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       children: [
         detailsCard(),
         // sectionLabel('Security'),
-        SizedBox(height: Get.height * 0.02),
+        SizedBox(height: Sizes.hp(0.02)),
         menuCard([
           menuTile(
             icon: Icons.lock_reset_rounded,
@@ -91,7 +88,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             onTap: () => Get.toNamed(RouteList.changepassword),
           ),
         ]),
-        SizedBox(height: Get.height * 0.02),
+        SizedBox(height: Sizes.hp(0.02)),
 
         // sectionLabel('Session'),
         menuCard([
@@ -102,17 +99,17 @@ class ProfileScreenState extends State<ProfileScreen> {
             onTap: () => confirmLogout(context),
           ),
         ]),
-        SizedBox(height: Get.height * 0.02),
-        // sectionLabel('Danger zone', color: _danger),
+        SizedBox(height: Sizes.hp(0.02)),
+        // sectionLabel('Danger zone', color: ColorConstants.danger2),
         menuCard([
           menuTile(
             icon: Icons.delete_forever_rounded,
             title: 'Delete Account',
             subtitle: 'Permanently remove your account',
-            color: _danger,
+            color: ColorConstants.danger2,
             onTap: () => onDeleteTap(context),
           ),
-        ], borderColor: _danger.withValues(alpha: 0.18)),
+        ], borderColor: ColorConstants.danger2.withValues(alpha: 0.18)),
         const SizedBox(height: 8),
       ],
     );
@@ -171,7 +168,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: ColorConstants.white,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -186,12 +183,12 @@ class ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.55),
+                        color: ColorConstants.white.withValues(alpha: 0.55),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
+                          color: ColorConstants.black.withValues(alpha: 0.18),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
@@ -200,7 +197,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     child: Container(
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white,
+                        color: ColorConstants.white,
                       ),
                       alignment: Alignment.center,
                       child: ShaderMask(
@@ -215,7 +212,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                           style: const TextStyle(
                             fontSize: 34,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: ColorConstants.white,
                           ),
                         ),
                       ),
@@ -232,12 +229,15 @@ class ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: primaryDark,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(
+                            color: ColorConstants.white,
+                            width: 2,
+                          ),
                         ),
                         child: const Icon(
                           Icons.edit_rounded,
                           size: 15,
-                          color: Colors.white,
+                          color: ColorConstants.white,
                         ),
                       ),
                     ),
@@ -254,7 +254,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: ColorConstants.white,
                     letterSpacing: 0.1,
                   ),
                 ),
@@ -266,7 +266,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
+                  color: ColorConstants.white.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -275,7 +275,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     Icon(
                       Icons.email_outlined,
                       size: 14,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: ColorConstants.white.withValues(alpha: 0.9),
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -286,7 +286,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: ColorConstants.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -306,14 +306,14 @@ class ProfileScreenState extends State<ProfileScreen> {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: alpha),
+      color: ColorConstants.white.withValues(alpha: alpha),
     ),
   );
 
   // ───────────────────────── Cards ─────────────────────────
 
   BoxDecoration _cardDecoration({Color? borderColor}) => BoxDecoration(
-    color: Colors.white,
+    color: ColorConstants.white,
     borderRadius: BorderRadius.circular(22),
     border: borderColor == null ? null : Border.all(color: borderColor),
     boxShadow: [
@@ -325,7 +325,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     ],
   );
 
-  Widget sectionLabel(String text, {Color color = _muted}) {
+  Widget sectionLabel(String text, {Color color = ColorConstants.mutedGrey}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 24, 0, 10),
       child: Text(
@@ -364,7 +364,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             trailing: const Icon(
               Icons.lock_outline_rounded,
               size: 16,
-              color: _muted,
+              color: ColorConstants.mutedGrey,
             ),
           ),
         ],
@@ -393,7 +393,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   label,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: _muted,
+                    color: ColorConstants.mutedGrey,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -403,7 +403,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: _ink,
+                    color: ColorConstants.ink,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -412,7 +412,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
           if (onEdit != null)
             Material(
-              color: _tint,
+              color: ColorConstants.primaryTint,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
@@ -467,9 +467,9 @@ class ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
     Color color = primary,
   }) {
-    final isDanger = color == _danger;
+    final isDanger = color == ColorConstants.danger2;
     return Material(
-      color: Colors.transparent,
+      color: ColorConstants.transparent,
       child: InkWell(
         onTap: onTap,
         splashColor: color.withValues(alpha: 0.08),
@@ -490,7 +490,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isDanger ? _danger : _ink,
+                        color:
+                            isDanger
+                                ? ColorConstants.danger2
+                                : ColorConstants.ink,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -498,7 +501,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                       subtitle,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: ColorConstants.black54,
                       ),
                     ),
                   ],
@@ -527,7 +530,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   // ───────────────────────── Actions ─────────────────────────
 
   Future<void> editName() async {
-    _profileController.nameController.text = _profileController.userName.value;
+    if (_profileController.isLoading.value) {
+      return; // name may not be loaded yet
+    }
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -539,8 +544,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     showConfirmDialog(
       context: context,
       title: 'Logout',
-      message:
-          'Are you sure you want to logout?\nAll saved data will be removed.',
+      message: 'Are you sure you want to log out? ',
       confirmLabel: 'Logout',
       onConfirm: () async {
         await tokenDataService.logout();
@@ -607,7 +611,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 child: const Icon(
                   Icons.insights_rounded,
                   size: 17,
-                  color: Colors.white,
+                  color: ColorConstants.white,
                 ),
               ),
               const SizedBox(width: 10),
@@ -616,7 +620,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
-                  color: _ink,
+                  color: ColorConstants.ink,
                   letterSpacing: 0.1,
                 ),
               ),
@@ -636,14 +640,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.calendar_month_outlined,
                 value: '$thisMonthScans',
                 label: 'This Month',
-                color: const Color(0xFF00A389),
+                color: ColorConstants.teal,
               ),
               statDivider(),
               statTile(
                 icon: Icons.today_outlined,
                 value: '$todayScans',
                 label: 'Today',
-                color: const Color(0xFFE08A00),
+                color: ColorConstants.warning3,
               ),
             ],
           ),
@@ -656,7 +660,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     width: 1,
     height: 54,
     margin: const EdgeInsets.symmetric(horizontal: 4),
-    color: const Color(0xFFF0F0F0),
+    color: ColorConstants.surfaceGray3,
   );
 
   Widget statTile({
@@ -684,7 +688,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w800,
-              color: _ink,
+              color: ColorConstants.ink,
               height: 1,
             ),
           ),
@@ -694,7 +698,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 11,
-              color: _muted,
+              color: ColorConstants.mutedGrey,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -714,14 +718,14 @@ class ProfileScreenState extends State<ProfileScreen> {
     required Future<void> Function() onConfirm,
   }) {
     final isDelete = confirmLabel == 'Delete';
-    final tone = isDelete ? _danger : primary;
+    final tone = isDelete ? ColorConstants.danger2 : primary;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: ColorConstants.white,
           insetPadding: const EdgeInsets.symmetric(horizontal: 28),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(26),
@@ -756,10 +760,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 18),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 21,
+                  style: TextStyle(
+                    fontSize: Get.height * 0.020,
                     fontWeight: FontWeight.w800,
-                    color: _ink,
+                    color: ColorConstants.ink,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -767,8 +771,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   message,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
+                    fontSize: Get.height * 0.016,
+                    color: ColorConstants.grey600,
                     height: 1.5,
                   ),
                 ),
@@ -779,13 +783,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
-                          foregroundColor: _ink,
-                          side: BorderSide(color: Colors.grey.shade300),
+                          foregroundColor: ColorConstants.ink,
+                          side: BorderSide(color: ColorConstants.grey300),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        onPressed: () => Navigator.pop(dialogContext),
+                        onPressed: () => Get.back(),
                         child: const Text(
                           'Cancel',
                           style: TextStyle(fontWeight: FontWeight.w600),
@@ -797,7 +801,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: tone,
-                          foregroundColor: Colors.white,
+                          foregroundColor: ColorConstants.white,
                           minimumSize: const Size.fromHeight(50),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -806,7 +810,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          Navigator.pop(dialogContext);
+                          Get.back();
 
                           try {
                             await onConfirm();
@@ -824,13 +828,7 @@ class ProfileScreenState extends State<ProfileScreen> {
 
                           if (!context.mounted) return;
 
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                            (route) => false,
-                          );
+                          Get.offAllNamed(RouteList.login);
                         },
                         child: Text(
                           confirmLabel,
@@ -860,12 +858,21 @@ class EditNameDialog extends StatefulWidget {
 
 class _EditNameDialogState extends State<EditNameDialog> {
   final formKey = GlobalKey<FormState>();
-  final c = Get.put(ProfileController());
+  final c = Get.find<ProfileController>();
+  @override
+  void initState() {
+    super.initState();
+    final name = c.userName.value;
+    c.nameController.value = TextEditingValue(
+      text: name,
+      selection: TextSelection.collapsed(offset: name.length), // cursor at end
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: ColorConstants.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
       contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
@@ -876,7 +883,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _tint,
+              color: ColorConstants.primaryTint,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.edit_rounded, size: 20, color: primary),
@@ -913,11 +920,14 @@ class _EditNameDialogState extends State<EditNameDialog> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _danger),
+              borderSide: const BorderSide(color: ColorConstants.danger2),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _danger, width: 1.5),
+              borderSide: const BorderSide(
+                color: ColorConstants.danger2,
+                width: 1.5,
+              ),
             ),
           ),
           validator:
@@ -929,9 +939,9 @@ class _EditNameDialogState extends State<EditNameDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Get.back(),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.grey.shade700,
+            foregroundColor: ColorConstants.grey700,
             minimumSize: const Size(90, 46),
           ),
           child: const Text(
@@ -943,7 +953,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
           () => ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
-              foregroundColor: Colors.white,
+              foregroundColor: ColorConstants.white,
               elevation: 0,
               minimumSize: const Size(110, 46),
               shape: RoundedRectangleBorder(
@@ -967,7 +977,7 @@ class _EditNameDialogState extends State<EditNameDialog> {
                       width: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: ColorConstants.white,
                       ),
                     )
                     : const Text(

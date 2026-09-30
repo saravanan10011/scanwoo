@@ -1,6 +1,5 @@
-// To parse this JSON data, do
-//
-//     final invoiceList = invoiceListFromJson(jsonString);
+// Null-safe invoice models. Nothing here can throw on missing / null /
+// unexpected values from the API.
 
 // ignore_for_file: constant_identifier_names
 
@@ -11,6 +10,46 @@ InvoiceList invoiceListFromJson(String str) =>
 
 String invoiceListToJson(InvoiceList data) => json.encode(data.toJson());
 
+// ───────────────────────── safe parsing helpers ─────────────────────────
+
+/// Any value -> non-null String ('' when null).
+String _s(dynamic v) => v == null ? '' : v.toString();
+
+/// Any value -> String? (null stays null).
+String? _sn(dynamic v) => v?.toString();
+
+/// num or numeric String -> double (null if not parsable).
+double? _dn(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString().replaceAll(',', '').trim());
+}
+
+double _d(dynamic v) => _dn(v) ?? 0.0;
+
+int _i(dynamic v, [int fallback = 0]) {
+  if (v == null) return fallback;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString()) ?? fallback;
+}
+
+bool _b(dynamic v, [bool fallback = false]) {
+  if (v is bool) return v;
+  if (v == null) return fallback;
+  final t = v.toString().toLowerCase();
+  if (t == 'true' || t == '1' || t == 'yes') return true;
+  if (t == 'false' || t == '0' || t == 'no') return false;
+  return fallback;
+}
+
+/// Laravel/PHP sends `[]` instead of `{}` for empty objects -> handle both.
+Map<String, dynamic> _map(dynamic v) =>
+    v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+
+List<dynamic> _list(dynamic v) => v is List ? v : const [];
+
+// ───────────────────────────── InvoiceList ──────────────────────────────
+
 class InvoiceList {
   bool success;
   List<InvoiceData> data;
@@ -19,29 +58,30 @@ class InvoiceList {
   InvoiceList({required this.success, required this.data, required this.meta});
 
   factory InvoiceList.fromJson(Map<String, dynamic> json) => InvoiceList(
-    success: json["success"],
-    data: List<InvoiceData>.from(
-      json["data"].map((x) => InvoiceData.fromJson(x)),
-    ),
-    meta: Meta.fromJson(json["meta"]),
+    success: _b(json["success"], true),
+    data:
+        _list(json["data"]).map((x) => InvoiceData.fromJson(_map(x))).toList(),
+    meta: Meta.fromJson(_map(json["meta"])),
   );
 
   Map<String, dynamic> toJson() => {
     "success": success,
-    "data": List<dynamic>.from(data.map((x) => x.toJson())),
+    "data": data.map((x) => x.toJson()).toList(),
     "meta": meta.toJson(),
   };
 }
 
+// ───────────────────────────── InvoiceData ──────────────────────────────
+
 class InvoiceData {
   int id;
   String supplier;
-  VatNumber vatNumber;
+  String vatNumber;
   String invoiceNo;
   String branch;
   dynamic date;
   double net;
-  int? vat;
+  double? vat;
   double gross;
   dynamic sr;
   dynamic zr;
@@ -77,31 +117,31 @@ class InvoiceData {
   });
 
   factory InvoiceData.fromJson(Map<String, dynamic> json) => InvoiceData(
-    id: json["id"],
-    supplier: json["supplier"],
-    vatNumber: vatNumberValues.map[json["vat_number"]]!,
-    invoiceNo: json["invoice_no"],
-    branch: json["branch"],
+    id: _i(json["id"]),
+    supplier: _s(json["supplier"]),
+    vatNumber: _s(json["vat_number"]),
+    invoiceNo: _s(json["invoice_no"]),
+    branch: _s(json["branch"]),
     date: json["date"],
-    net: json["net"]?.toDouble(),
-    vat: json["vat"],
-    gross: json["gross"]?.toDouble(),
+    net: _d(json["net"]),
+    vat: _dn(json["vat"]),
+    gross: _d(json["gross"]),
     sr: json["sr"],
     zr: json["zr"],
     exempt: json["exempt"],
-    payment: paymentValues.map[json["payment"]]!,
-    ocrStatus: ocrStatusValues.map[json["ocr_status"]]!,
-    status: statusValues.map[json["status"]]!,
-    uploadedAt: DateTime.parse(json["uploaded_at"]),
-    fields: Fields.fromJson(json["fields"]),
-    images: List<Image>.from(json["images"].map((x) => Image.fromJson(x))),
-    imagesUnviewedCount: json["images_unviewed_count"],
+    payment: paymentValues.map[json["payment"]] ?? Payment.EMPTY,
+    ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
+    status: statusValues.map[json["status"]] ?? Status.UNKNOWN,
+    uploadedAt: DateTime.tryParse(_s(json["uploaded_at"])) ?? DateTime.now(),
+    fields: Fields.fromJson(_map(json["fields"])),
+    images: _list(json["images"]).map((x) => Image.fromJson(_map(x))).toList(),
+    imagesUnviewedCount: _i(json["images_unviewed_count"]),
   );
 
   Map<String, dynamic> toJson() => {
     "id": id,
     "supplier": supplier,
-    "vat_number": vatNumberValues.reverse[vatNumber],
+    "vat_number": vatNumber,
     "invoice_no": invoiceNo,
     "branch": branch,
     "date": date,
@@ -114,13 +154,14 @@ class InvoiceData {
     "payment": paymentValues.reverse[payment],
     "ocr_status": ocrStatusValues.reverse[ocrStatus],
     "status": statusValues.reverse[status],
-    "uploaded_at":
-        "${uploadedAt.year.toString().padLeft(4, '0')}-${uploadedAt.month.toString().padLeft(2, '0')}-${uploadedAt.day.toString().padLeft(2, '0')}",
+    "uploaded_at": uploadedAt.toIso8601String(),
     "fields": fields.toJson(),
-    "images": List<dynamic>.from(images.map((x) => x.toJson())),
+    "images": images.map((x) => x.toJson()).toList(),
     "images_unviewed_count": imagesUnviewedCount,
   };
 }
+
+// ─────────────────────────────── Fields ─────────────────────────────────
 
 class Fields {
   String? rawText;
@@ -156,33 +197,29 @@ class Fields {
   });
 
   factory Fields.fromJson(Map<String, dynamic> json) => Fields(
-    rawText: json["raw_text"],
+    rawText: _sn(json["raw_text"]),
     parsedHeader:
-        json["parsed_header"] == null
-            ? null
-            : ParsedHeader.fromJson(json["parsed_header"]),
-    items:
-        json["items"] == null
-            ? []
-            : List<Item>.from(json["items"]!.map((x) => Item.fromJson(x))),
-    needsReview: json["needs_review"],
-    paymentDetails: json["Payment Details"],
-    accountName: json["Account Name"],
-    accountNumber: json["Account Number"],
-    ifscCode: json["IFSC Code"],
-    branch: json["Branch"],
-    paymentTerms: json["Payment Terms"],
-    subtotal: json["Subtotal"],
-    billTo: json["Bill To"],
-    shipToIfDifferent: json["Ship To (If Different)"],
-    email: json["Email"],
+        json["parsed_header"] is Map
+            ? ParsedHeader.fromJson(_map(json["parsed_header"]))
+            : null,
+    items: _list(json["items"]).map((x) => Item.fromJson(_map(x))).toList(),
+    needsReview: json["needs_review"] == null ? null : _b(json["needs_review"]),
+    paymentDetails: _sn(json["Payment Details"]),
+    accountName: _sn(json["Account Name"]),
+    accountNumber: _sn(json["Account Number"]),
+    ifscCode: _sn(json["IFSC Code"]),
+    branch: _sn(json["Branch"]),
+    paymentTerms: _sn(json["Payment Terms"]),
+    subtotal: _sn(json["Subtotal"]),
+    billTo: _sn(json["Bill To"]),
+    shipToIfDifferent: _sn(json["Ship To (If Different)"]),
+    email: _sn(json["Email"]),
   );
 
   Map<String, dynamic> toJson() => {
     "raw_text": rawText,
     "parsed_header": parsedHeader?.toJson(),
-    "items":
-        items == null ? [] : List<dynamic>.from(items!.map((x) => x.toJson())),
+    "items": items?.map((x) => x.toJson()).toList() ?? [],
     "needs_review": needsReview,
     "Payment Details": paymentDetails,
     "Account Name": accountName,
@@ -197,11 +234,13 @@ class Fields {
   };
 }
 
+// ─────────────────────────────── Item ───────────────────────────────────
+
 class Item {
   String qty;
   String description;
   String amount;
-  Vat vat;
+  String vat;
   String total;
   String rawOcrLine;
   NeedsReview needsReview;
@@ -217,20 +256,20 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
-    qty: json["qty"],
-    description: json["description"],
-    amount: json["amount"],
-    vat: vatValues.map[json["vat"]]!,
-    total: json["total"],
-    rawOcrLine: json["raw_ocr_line"],
-    needsReview: needsReviewValues.map[json["needs_review"]]!,
+    qty: _s(json["qty"]),
+    description: _s(json["description"]),
+    amount: _s(json["amount"]),
+    vat: _s(json["vat"]),
+    total: _s(json["total"]),
+    rawOcrLine: _s(json["raw_ocr_line"]),
+    needsReview: needsReviewValues.map[json["needs_review"]] ?? NeedsReview.NO,
   );
 
   Map<String, dynamic> toJson() => {
     "qty": qty,
     "description": description,
     "amount": amount,
-    "vat": vatValues.reverse[vat],
+    "vat": vat,
     "total": total,
     "raw_ocr_line": rawOcrLine,
     "needs_review": needsReviewValues.reverse[needsReview],
@@ -244,15 +283,13 @@ final needsReviewValues = EnumValues({
   "Yes": NeedsReview.YES,
 });
 
-enum Vat { EMPTY, THE_799 }
-
-final vatValues = EnumValues({"": Vat.EMPTY, "7.99": Vat.THE_799});
+// ───────────────────────────── ParsedHeader ─────────────────────────────
 
 class ParsedHeader {
   String companyName;
   String? totalVat;
   Payment? paymentTerms;
-  VatNumber? vatNumber;
+  String? vatNumber;
   String? invoiceNo;
   String? invoiceDate;
   String? accountNo;
@@ -274,23 +311,24 @@ class ParsedHeader {
   });
 
   factory ParsedHeader.fromJson(Map<String, dynamic> json) => ParsedHeader(
-    companyName: json["company_name"],
-    totalVat: json["total_vat"],
+    companyName: _s(json["company_name"]),
+    totalVat: _sn(json["total_vat"]),
     paymentTerms: paymentValues.map[json["payment_terms"]],
-    vatNumber: vatNumberValues.map[json["vat_number"]],
-    invoiceNo: json["invoice_no"],
-    invoiceDate: json["invoice_date"],
-    accountNo: json["account_no"],
-    subTotal: json["sub_total"],
-    grandTotal: json["grand_total"],
-    previousBalance: json["previous_balance"],
+    vatNumber: _sn(json["vat_number"]),
+    invoiceNo: _sn(json["invoice_no"]),
+    invoiceDate: _sn(json["invoice_date"]),
+    accountNo: _sn(json["account_no"]),
+    subTotal: _sn(json["sub_total"]),
+    grandTotal: _sn(json["grand_total"]),
+    previousBalance: _sn(json["previous_balance"]),
   );
 
   Map<String, dynamic> toJson() => {
     "company_name": companyName,
     "total_vat": totalVat,
-    "payment_terms": paymentValues.reverse[paymentTerms],
-    "vat_number": vatNumberValues.reverse[vatNumber],
+    "payment_terms":
+        paymentTerms == null ? null : paymentValues.reverse[paymentTerms],
+    "vat_number": vatNumber,
     "invoice_no": invoiceNo,
     "invoice_date": invoiceDate,
     "account_no": accountNo,
@@ -300,6 +338,8 @@ class ParsedHeader {
   };
 }
 
+// ───────────────────────────── Enums (safe) ─────────────────────────────
+
 enum Payment { CARD, CASH, EMPTY }
 
 final paymentValues = EnumValues({
@@ -308,19 +348,28 @@ final paymentValues = EnumValues({
   "—": Payment.EMPTY,
 });
 
-enum VatNumber { EMPTY, THE_94_SZ017 }
+enum OcrStatus { COMPLETE, UNKNOWN }
 
-final vatNumberValues = EnumValues({
-  "": VatNumber.EMPTY,
-  "94SZ017": VatNumber.THE_94_SZ017,
+final ocrStatusValues = EnumValues({
+  "complete": OcrStatus.COMPLETE,
+  "unknown": OcrStatus.UNKNOWN,
 });
+
+enum Status { PENDING, UNKNOWN }
+
+final statusValues = EnumValues({
+  "pending": Status.PENDING,
+  "unknown": Status.UNKNOWN,
+});
+
+// ─────────────────────────────── Image ──────────────────────────────────
 
 class Image {
   int id;
   String filePath;
   String url;
   String originalName;
-  MimeType mimeType;
+  String mimeType;
   ExtractedData extractedData;
   OcrStatus ocrStatus;
   int size;
@@ -343,16 +392,16 @@ class Image {
   });
 
   factory Image.fromJson(Map<String, dynamic> json) => Image(
-    id: json["id"],
-    filePath: json["file_path"],
-    url: json["url"],
-    originalName: json["original_name"],
-    mimeType: mimeTypeValues.map[json["mime_type"]]!,
-    extractedData: ExtractedData.fromJson(json["extracted_data"]),
-    ocrStatus: ocrStatusValues.map[json["ocr_status"]]!,
-    size: json["size"],
-    sortOrder: json["sort_order"],
-    isViewed: json["is_viewed"],
+    id: _i(json["id"]),
+    filePath: _s(json["file_path"]),
+    url: _s(json["url"]),
+    originalName: _s(json["original_name"]),
+    mimeType: _s(json["mime_type"]),
+    extractedData: ExtractedData.fromJson(_map(json["extracted_data"])),
+    ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
+    size: _i(json["size"]),
+    sortOrder: _i(json["sort_order"]),
+    isViewed: _b(json["is_viewed"]),
     viewedAt: json["viewed_at"],
   );
 
@@ -361,7 +410,7 @@ class Image {
     "file_path": filePath,
     "url": url,
     "original_name": originalName,
-    "mime_type": mimeTypeValues.reverse[mimeType],
+    "mime_type": mimeType,
     "extracted_data": extractedData.toJson(),
     "ocr_status": ocrStatusValues.reverse[ocrStatus],
     "size": size,
@@ -377,24 +426,10 @@ class ExtractedData {
   ExtractedData({required this.rawText});
 
   factory ExtractedData.fromJson(Map<String, dynamic> json) =>
-      ExtractedData(rawText: json["raw_text"]);
+      ExtractedData(rawText: _s(json["raw_text"]));
 
   Map<String, dynamic> toJson() => {"raw_text": rawText};
 }
-
-enum MimeType { APPLICATION_OCTET_STREAM }
-
-final mimeTypeValues = EnumValues({
-  "application/octet-stream": MimeType.APPLICATION_OCTET_STREAM,
-});
-
-enum OcrStatus { COMPLETE }
-
-final ocrStatusValues = EnumValues({"complete": OcrStatus.COMPLETE});
-
-enum Status { PENDING }
-
-final statusValues = EnumValues({"pending": Status.PENDING});
 
 class Meta {
   int currentPage;
@@ -410,10 +445,10 @@ class Meta {
   });
 
   factory Meta.fromJson(Map<String, dynamic> json) => Meta(
-    currentPage: json["current_page"],
-    lastPage: json["last_page"],
-    perPage: json["per_page"],
-    total: json["total"],
+    currentPage: _i(json["current_page"], 1),
+    lastPage: _i(json["last_page"], 1),
+    perPage: _i(json["per_page"]),
+    total: _i(json["total"]),
   );
 
   Map<String, dynamic> toJson() => {
@@ -426,12 +461,9 @@ class Meta {
 
 class EnumValues<T> {
   Map<String, T> map;
-  late Map<T, String> reverseMap;
+  late Map<T, String> reverseMap = map.map((k, v) => MapEntry(v, k));
 
   EnumValues(this.map);
 
-  Map<T, String> get reverse {
-    reverseMap = map.map((k, v) => MapEntry(v, k));
-    return reverseMap;
-  }
+  Map<T, String> get reverse => reverseMap;
 }

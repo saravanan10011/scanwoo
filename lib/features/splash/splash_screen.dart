@@ -1,3 +1,5 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,7 +16,7 @@ class SplashScreen extends StatefulWidget {
 
 class SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const primaryColor = Color(0xFF4038D8);
+  static const primaryColor = ColorConstants.primary;
   final tokenDataService = Get.find<TokenDataServiceImp>();
 
   late AnimationController controller;
@@ -86,7 +88,7 @@ class SplashScreenState extends State<SplashScreen>
       width: 90,
       height: 90,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ColorConstants.white,
         borderRadius: BorderRadius.circular(24),
       ),
       child: const Icon(
@@ -99,10 +101,10 @@ class SplashScreenState extends State<SplashScreen>
 
   Widget invoiceLogo() {
     return Container(
-      width: Get.width * 0.22,
-      height: Get.width * 0.22,
+      width: Sizes.wp(0.22),
+      height: Sizes.wp(0.22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ColorConstants.white,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Padding(
@@ -134,13 +136,13 @@ class SplashScreenState extends State<SplashScreen>
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: ColorConstants.white,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Scan. Edit. Export.',
-                  style: TextStyle(fontSize: 15, color: Colors.white70),
+                  'Scan. Extract. Export.',
+                  style: TextStyle(fontSize: 15, color: ColorConstants.white70),
                 ),
                 const SizedBox(height: 40),
                 AnimatedBuilder(
@@ -152,8 +154,8 @@ class SplashScreenState extends State<SplashScreen>
                         value: loading.value,
                         minHeight: 4,
                         borderRadius: BorderRadius.circular(10),
-                        color: Colors.white,
-                        backgroundColor: Colors.white30,
+                        color: ColorConstants.white,
+                        backgroundColor: ColorConstants.white30,
                       ),
                     );
                   },

@@ -1,3 +1,5 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart'; // compute
@@ -8,14 +10,9 @@ import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 
-const Color _primary = Color(0xFF4038D8);
-const Color _primarySoft = Color(0xFFEDECFB);
-const Color _background = Color(0xFFF5F7FB);
-const Color _textDark = Color(0xFF1C1C28);
-const Color _textMuted = Color(0xFF7A7A8C);
-const Color _border = Color(0xFFE7E7EE);
-double _sw(double px) => Get.width * (px / 375);
 
+/// args: [sourcePath, outPath, angle]
+/// Runs in a background isolate so large photos don't freeze the UI.
 String _rotateInIsolate(List<String> args) {
   final bytes = File(args[0]).readAsBytesSync();
   final decoded = img.decodeImage(bytes);
@@ -46,7 +43,7 @@ class CropAdjustController extends GetxController {
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: _textDark,
+          backgroundColor: ColorConstants.textDark3,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           content: Text(message),
           duration: const Duration(seconds: 2),
@@ -66,10 +63,10 @@ class CropAdjustController extends GetxController {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Photo',
-            toolbarColor: _primary,
-            toolbarWidgetColor: Colors.white,
-            activeControlsWidgetColor: _primary,
-            backgroundColor: Colors.black,
+            toolbarColor: ColorConstants.primary,
+            toolbarWidgetColor: ColorConstants.white,
+            activeControlsWidgetColor: ColorConstants.primary,
+            backgroundColor: ColorConstants.black,
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
             aspectRatioPresets: [
@@ -142,27 +139,29 @@ class CropAdjustScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Get.put(CropAdjustController(image));
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: _primary,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: _background,
-        body: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                child: _buildPreview(c),
-              ),
+    return Obx(
+      () => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: ColorConstants.primary,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+          child: Scaffold(
+            backgroundColor: ColorConstants.background,
+            body: Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: _buildPreview(c),
+                  ),
+                ),
+                _buildBottomPanel(context, c),
+              ],
             ),
-            _buildBottomPanel(context, c),
-          ],
+          ),
         ),
-      ),
     );
   }
 
@@ -171,10 +170,10 @@ class CropAdjustScreen extends StatelessWidget {
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: _primary,
+        color: ColorConstants.primary,
         boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: ColorConstants.shadow08,
             blurRadius: 6,
             offset: Offset(0, 2),
           ),
@@ -190,7 +189,7 @@ class CropAdjustScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: ColorConstants.white,
               ),
             ),
             Align(
@@ -203,7 +202,7 @@ class CropAdjustScreen extends StatelessWidget {
               //   icon: const Icon(
               //     Icons.arrow_back_ios_new,
               //     size: 18,
-              //     color: Colors.white,
+              //     color: ColorConstants.white,
               //   ),
               // ),
             ),
@@ -214,10 +213,10 @@ class CropAdjustScreen extends StatelessWidget {
   }
 
   Widget _circleIconButton(IconData icon, VoidCallback onTap) {
-    final size = _sw(40);
+    final size = Sizes.w(40);
 
     return Material(
-      color: Colors.white.withValues(alpha: 0.15),
+      color: ColorConstants.white.withValues(alpha: 0.15),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -228,9 +227,9 @@ class CropAdjustScreen extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white24, width: 1),
+            border: Border.all(color: ColorConstants.white24, width: 1),
           ),
-          child: Icon(icon, size: _sw(19), color: Colors.white),
+          child: Icon(icon, size: Sizes.w(19), color: ColorConstants.white),
         ),
       ),
     );
@@ -240,11 +239,11 @@ class CropAdjustScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1F),
+        color: ColorConstants.textDark4,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000),
+            color: ColorConstants.shadow08,
             blurRadius: 12,
             offset: Offset(0, 4),
           ),
@@ -252,8 +251,7 @@ class CropAdjustScreen extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Obx(
-          () => Stack(
+        child: Stack(
             fit: StackFit.expand,
             children: [
               Padding(
@@ -266,17 +264,16 @@ class CropAdjustScreen extends StatelessWidget {
               ),
               if (c.isProcessing.value)
                 Container(
-                  color: Colors.black38,
+                  color: ColorConstants.black38,
                   child: const Center(
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: ColorConstants.white,
                       strokeWidth: 2.5,
                     ),
                   ),
                 ),
             ],
           ),
-        ),
       ),
     );
   }
@@ -290,11 +287,11 @@ class CropAdjustScreen extends StatelessWidget {
         14 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: ColorConstants.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x0F000000),
+            color: ColorConstants.shadow06,
             blurRadius: 12,
             offset: Offset(0, -2),
           ),
@@ -309,7 +306,7 @@ class CropAdjustScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: _textMuted,
+              color: ColorConstants.textMuted3,
               letterSpacing: 0.3,
             ),
           ),
@@ -327,12 +324,11 @@ class CropAdjustScreen extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _background,
+        color: ColorConstants.background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border),
+        border: Border.all(color: ColorConstants.border3),
       ),
-      child: Obx(
-        () => Row(
+      child: Row(
           children: [
             _buildTool(
               c,
@@ -361,7 +357,6 @@ class CropAdjustScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -376,8 +371,8 @@ class CropAdjustScreen extends StatelessWidget {
     final bool active = enabled && !c.isProcessing.value;
     final Color color =
         !active
-            ? _textMuted.withValues(alpha: 0.4)
-            : (selected ? _primary : _textMuted);
+            ? ColorConstants.textMuted3.withValues(alpha: 0.4)
+            : (selected ? ColorConstants.primary : ColorConstants.textMuted3);
 
     return Expanded(
       child: InkWell(
@@ -387,7 +382,7 @@ class CropAdjustScreen extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? _primarySoft : Colors.transparent,
+            color: selected ? ColorConstants.primaryPale : ColorConstants.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
@@ -414,16 +409,15 @@ class CropAdjustScreen extends StatelessWidget {
   Widget _buildNextButton(CropAdjustController c) {
     return Center(
       child: SizedBox(
-        width: Get.width * 0.5,
+        width: Sizes.wp(0.5),
         height: 48,
-        child: Obx(
-          () => ElevatedButton(
+        child: ElevatedButton(
             onPressed: c.isProcessing.value ? null : c.next,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: _primary.withValues(alpha: 0.4),
-              disabledForegroundColor: Colors.white70,
+              backgroundColor: ColorConstants.primary,
+              foregroundColor: ColorConstants.white,
+              disabledBackgroundColor: ColorConstants.primary.withValues(alpha: 0.4),
+              disabledForegroundColor: ColorConstants.white70,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -434,7 +428,6 @@ class CropAdjustScreen extends StatelessWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
-        ),
       ),
     );
   }

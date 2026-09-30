@@ -1,4 +1,4 @@
-// import 'package:flutter/material.dart';
+// import 'package:quick_scanner/utils/common_color.dart';
 // import '../login_screen/screen/login_screen.dart';
 
 // class RegisterScreen extends StatefulWidget {
@@ -19,9 +19,9 @@
 //   bool hideConfirm = true;
 //   bool loading = false;
 
-//   static const primary = Color(0xFF5146F5);
-//   static const text = Color(0xFF25254A);
-//   static const hint = Color(0xFF9696A8);
+//   static const primary = ColorConstants.authPrimary;
+//   static const text = ColorConstants.authText;
+//   static const hint = ColorConstants.authHint;
 
 //   @override
 //   void dispose() {
@@ -114,14 +114,14 @@
 //     return InputDecoration(
 //       hintText: text,
 //       hintStyle: const TextStyle(color: hint, fontSize: 12),
-//       prefixIcon: Icon(icon, color: const Color(0xFF9B9BAB), size: 17),
+//       prefixIcon: Icon(icon, color: ColorConstants.hint, size: 17),
 //       suffixIcon: suffix,
 //       filled: true,
-//       fillColor: Colors.white,
+//       fillColor: ColorConstants.white,
 //       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
 //       enabledBorder: OutlineInputBorder(
 //         borderRadius: BorderRadius.circular(8),
-//         borderSide: const BorderSide(color: Color(0xFFE2E2EA)),
+//         borderSide: const BorderSide(color: ColorConstants.border),
 //       ),
 //       focusedBorder: OutlineInputBorder(
 //         borderRadius: BorderRadius.circular(8),
@@ -174,7 +174,7 @@
 //                             ? Icons.visibility_off_outlined
 //                             : Icons.visibility_outlined,
 //                         size: 17,
-//                         color: const Color(0xFF9999A8),
+//                         color: ColorConstants.hint2,
 //                       ),
 //                     ),
 //           ),
@@ -186,7 +186,7 @@
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
-//       backgroundColor: const Color(0xFFFDFDFF),
+//       backgroundColor: ColorConstants.surfaceWhite,
 //       body: SafeArea(
 //         child: SingleChildScrollView(
 //           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -291,7 +291,7 @@
 //                             height: 19,
 //                             child: CircularProgressIndicator(
 //                               strokeWidth: 2,
-//                               color: Colors.white,
+//                               color: ColorConstants.white,
 //                             ),
 //                           )
 //                           : const Text(
@@ -299,7 +299,7 @@
 //                             style: TextStyle(
 //                               fontSize: 12,
 //                               fontWeight: FontWeight.w600,
-//                               color: Colors.white,
+//                               color: ColorConstants.white,
 //                             ),
 //                           ),
 //                 ),

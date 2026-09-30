@@ -1,3 +1,5 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:quick_scanner/utils/helpers.dart';
 import '../services/models/scan_record.dart';
@@ -32,17 +34,17 @@ void showExportSheet(BuildContext context, List<ScanRecord> records) {
                           : '${records.length} records',
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF666666),
+                        color: ColorConstants.grey66,
                       ),
                     ),
                   ],
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                leading: const Icon(Icons.picture_as_pdf, color: ColorConstants.red),
                 title: const Text('Export as PDF'),
                 onTap: () {
-                  Navigator.pop(sheet);
+                  Get.back();
                   _run(
                     context,
                     () => PdfService.exportAndShareRecords(records),
@@ -51,10 +53,10 @@ void showExportSheet(BuildContext context, List<ScanRecord> records) {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.table_chart, color: Colors.green),
+                leading: const Icon(Icons.table_chart, color: ColorConstants.green),
                 title: const Text('Export as Excel'),
                 onTap: () {
-                  Navigator.pop(sheet);
+                  Get.back();
                   _run(
                     context,
                     () => ExcelService.exportAndShareRecords(records),

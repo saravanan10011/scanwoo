@@ -7,4 +7,11 @@ class RouteList {
   static const String forgetpassword = '/forgetpassword';
   static const String resetPassword = '/resetPassword';
   static const String changepassword = '/changepassword';
+  static const String scanner = '/scanner';
+  static const String cropAdjust = '/cropAdjust';
+  static const String processing = '/processing';
+  static const String multiDocResult = '/multiDocResult';
+  static const String scanPreview = '/scanPreview';
+  static const String editRecord = '/editRecord';
+  static const String editRawText = '/editRawText';
 }

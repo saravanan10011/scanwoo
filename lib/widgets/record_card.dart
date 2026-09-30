@@ -1,17 +1,12 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../services/models/scan_record.dart';
 import '../utils/helpers.dart';
-
-const _textDark = Color(0xFF1A1B25);
-const _textMuted = Color(0xFF8B8D98);
-const _cardIconBg = Color(0xFFEDEDFF);
 
 // Same 375x812 baseline scaling used across the app's screens, kept
 // private to this file so RecordCard stays a drop-in, self-contained
 // widget wherever it's used.
-double _sw(double px) => Get.width * (px / 375);
-double _sp(double px) => _sw(px).clamp(px * 0.85, px * 1.25);
 
 class RecordCard extends StatelessWidget {
   final ScanRecord record;
@@ -43,41 +38,44 @@ class RecordCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_sw(16)),
-        border: Border.all(color: const Color(0xFFF0F0F5)),
+        color: ColorConstants.white,
+        borderRadius: BorderRadius.circular(Sizes.w(16)),
+        border: Border.all(color: ColorConstants.surfaceGray2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: ColorConstants.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(_sw(14)),
+        padding: EdgeInsets.all(Sizes.w(14)),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: _sw(46),
-              height: _sw(46),
+              width: Sizes.w(46),
+              height: Sizes.w(46),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_cardIconBg, primaryColor.withValues(alpha: 0.16)],
+                  colors: [
+                    ColorConstants.primarySoft,
+                    primaryColor.withValues(alpha: 0.16),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(_sw(14)),
+                borderRadius: BorderRadius.circular(Sizes.w(14)),
               ),
               alignment: Alignment.center,
               child: Icon(
                 Icons.description_outlined,
                 color: primaryColor,
-                size: _sw(22),
+                size: Sizes.w(22),
               ),
             ),
-            SizedBox(width: _sw(12)),
+            SizedBox(width: Sizes.w(12)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,33 +86,36 @@ class RecordCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: _sp(14),
-                      color: _textDark,
+                      fontSize: Sizes.sp(14),
+                      color: ColorConstants.textDark,
                     ),
                   ),
                   if (_preview != null) ...[
-                    SizedBox(height: _sw(3)),
+                    SizedBox(height: Sizes.w(3)),
                     Text(
                       _preview!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: _sp(12), color: _textMuted),
+                      style: TextStyle(
+                        fontSize: Sizes.sp(12),
+                        color: ColorConstants.textMuted,
+                      ),
                     ),
                   ],
-                  SizedBox(height: _sw(6)),
+                  SizedBox(height: Sizes.w(6)),
                   Row(
                     children: [
                       Icon(
                         Icons.schedule_rounded,
-                        size: _sw(13),
-                        color: _textMuted,
+                        size: Sizes.w(13),
+                        color: ColorConstants.textMuted,
                       ),
-                      SizedBox(width: _sw(4)),
+                      SizedBox(width: Sizes.w(4)),
                       Text(
                         formatShortDate(record.createdAt),
                         style: TextStyle(
-                          fontSize: _sp(11.5),
-                          color: _textMuted,
+                          fontSize: Sizes.sp(11.5),
+                          color: ColorConstants.textMuted,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -132,10 +133,14 @@ class RecordCard extends StatelessWidget {
 
   Widget _menuButton(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, color: _textMuted, size: _sw(20)),
+      icon: Icon(
+        Icons.more_vert,
+        color: ColorConstants.textMuted,
+        size: Sizes.w(20),
+      ),
       padding: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_sw(14)),
+        borderRadius: BorderRadius.circular(Sizes.w(14)),
       ),
       onSelected: (value) {
         if (value == 'edit') {
@@ -150,9 +155,16 @@ class RecordCard extends StatelessWidget {
               value: 'edit',
               child: Row(
                 children: [
-                  const Icon(Icons.edit_outlined, size: 19, color: _textDark),
-                  SizedBox(width: _sw(10)),
-                  const Text('Edit', style: TextStyle(color: _textDark)),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 19,
+                    color: ColorConstants.textDark,
+                  ),
+                  SizedBox(width: Sizes.w(10)),
+                  const Text(
+                    'Edit',
+                    style: TextStyle(color: ColorConstants.textDark),
+                  ),
                 ],
               ),
             ),
@@ -160,9 +172,16 @@ class RecordCard extends StatelessWidget {
               value: 'delete',
               child: Row(
                 children: [
-                  Icon(Icons.delete_outline, size: 19, color: Colors.redAccent),
+                  Icon(
+                    Icons.delete_outline,
+                    size: 19,
+                    color: ColorConstants.redAccent,
+                  ),
                   SizedBox(width: 10),
-                  Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                  Text(
+                    'Delete',
+                    style: TextStyle(color: ColorConstants.redAccent),
+                  ),
                 ],
               ),
             ),

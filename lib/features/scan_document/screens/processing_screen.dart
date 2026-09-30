@@ -1,10 +1,9 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 // Same 375x812 baseline scaling used across the app's other screens.
-double _sw(double px) => Get.width * (px / 375);
-double _sh(double px) => Get.height * (px / 812);
-double _sp(double px) => _sw(px).clamp(px * 0.85, px * 1.25);
 
 class ProcessingController extends GetxController {
   final List<String> imagePaths;
@@ -77,62 +76,60 @@ class ProcessingScreen extends StatelessWidget {
       ProcessingController(imagePaths: imagePaths, onProcess: onProcess),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF4038D8),
+    return Obx(
+      () => Scaffold(
+      backgroundColor: ColorConstants.primary,
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: _sw(30)),
+            padding: EdgeInsets.symmetric(horizontal: Sizes.w(30)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.document_scanner_outlined,
-                  size: _sw(90),
-                  color: Colors.white,
+                  size: Sizes.w(90),
+                  color: ColorConstants.white,
                 ),
-                SizedBox(height: _sh(40)),
+                SizedBox(height: Sizes.h(40)),
                 Text(
                   'Processing Image...',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: _sp(22),
+                    color: ColorConstants.white,
+                    fontSize: Sizes.sp(22),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: _sh(12)),
+                SizedBox(height: Sizes.h(12)),
                 Text(
                   'Extracting text using OCR',
-                  style: TextStyle(color: Colors.white70, fontSize: _sp(14)),
+                  style: TextStyle(color: ColorConstants.white70, fontSize: Sizes.sp(14)),
                 ),
-                SizedBox(height: _sh(40)),
-                Obx(
-                  () => ClipRRect(
-                    borderRadius: BorderRadius.circular(_sw(10)),
+                SizedBox(height: Sizes.h(40)),
+                ClipRRect(
+                    borderRadius: BorderRadius.circular(Sizes.w(10)),
                     child: LinearProgressIndicator(
                       value: c.progress.value,
-                      minHeight: _sh(8),
-                      backgroundColor: Colors.white24,
-                      valueColor: const AlwaysStoppedAnimation(Colors.white),
+                      minHeight: Sizes.h(8),
+                      backgroundColor: ColorConstants.white24,
+                      valueColor: const AlwaysStoppedAnimation(ColorConstants.white),
                     ),
                   ),
-                ),
-                SizedBox(height: _sh(18)),
-                Obx(
-                  () => Text(
+                SizedBox(height: Sizes.h(18)),
+                Text(
                     '${c.percent}%',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: _sp(14),
+                      color: ColorConstants.white,
+                      fontSize: Sizes.sp(14),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
               ],
             ),
           ),
         ),
       ),
+    ),
     );
   }
 }

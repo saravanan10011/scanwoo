@@ -40,7 +40,7 @@ class DeleteAccountController extends GetxController {
           messageText: const Center(
             child: Text(
               'Your account has been deleted',
-              style: TextStyle(fontSize: 12, color: Colors.white),
+              style: TextStyle(fontSize: 12, color: ColorConstants.white),
             ),
           ),
           snackPosition: SnackPosition.BOTTOM,
@@ -52,9 +52,8 @@ class DeleteAccountController extends GetxController {
         await tokenDataService.logout();
       } else {
         // Wrong password / server error: keep the dialog open and show it.
-        error.value =
-            'Incorrect password or unable to delete account. '
-            'Please try again.';
+        error.value = 'Incorrect password  ';
+        // 'Please try again.';
       }
     } catch (_) {
       if (!isClosed) {
@@ -80,13 +79,7 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
     const DeleteAccountPasswordDialog(),
     barrierDismissible: false,
   );
-  static const primary = Color(0xFF4038D8);
-
-  static const _red = Color(0xFFDC2626);
-  static const _grey100 = Color(0xFFF3F4F6);
-  static const _grey300 = Color(0xFFD1D5DB);
-  static const _grey500 = Color(0xFF6B7280);
-  static const _ink = Color(0xFF111827);
+  static const primary = ColorConstants.primary;
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
     borderRadius: BorderRadius.circular(10),
@@ -105,8 +98,8 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
         return PopScope(
           canPop: !loading,
           child: Dialog(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.transparent,
+            backgroundColor: ColorConstants.white,
+            surfaceTintColor: ColorConstants.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -149,18 +142,17 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w600,
-                                      color: _ink,
+                                      color: ColorConstants.gray900,
                                     ),
                                   ),
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'This action cannot be undone. Enter your '
-                                  'password to confirm.',
+                                  'Enter your password to delete your account. All saved data will be permanently removed.',
                                   style: TextStyle(
                                     fontSize: 14,
                                     height: 1.4,
-                                    color: _grey500,
+                                    color: ColorConstants.gray500,
                                   ),
                                 ),
                               ],
@@ -174,7 +166,7 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: _ink,
+                          color: ColorConstants.gray900,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -188,12 +180,15 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                           if (c.error.value != null) c.error.value = null;
                         },
                         onFieldSubmitted: (_) => c.submit(),
-                        style: const TextStyle(fontSize: 14, color: _ink),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: ColorConstants.gray900,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Enter your password',
+                          hintText: 'xxxxxxxxxx',
                           hintStyle: const TextStyle(
                             fontSize: 14,
-                            color: _grey500,
+                            color: ColorConstants.gray500,
                           ),
                           errorText: error,
                           errorMaxLines: 3,
@@ -202,18 +197,18 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                             horizontal: 14,
                             vertical: 14,
                           ),
-                          enabledBorder: _border(_grey300),
-                          focusedBorder: _border(_ink),
-                          errorBorder: _border(_red),
-                          focusedErrorBorder: _border(_red),
-                          disabledBorder: _border(_grey300),
+                          enabledBorder: _border(ColorConstants.grayBorder),
+                          focusedBorder: _border(ColorConstants.gray900),
+                          errorBorder: _border(ColorConstants.red600),
+                          focusedErrorBorder: _border(ColorConstants.red600),
+                          disabledBorder: _border(ColorConstants.grayBorder),
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscure
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
                               size: 20,
-                              color: _grey500,
+                              color: ColorConstants.gray500,
                             ),
                             onPressed: c.obscure.toggle,
                           ),
@@ -232,8 +227,8 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                             onPressed:
                                 loading ? null : () => Get.back(result: false),
                             style: TextButton.styleFrom(
-                              backgroundColor: _grey100,
-                              foregroundColor: _ink,
+                              backgroundColor: ColorConstants.grayBackground,
+                              foregroundColor: ColorConstants.gray900,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 14,
@@ -253,11 +248,11 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
                               backgroundColor: primary,
-                              foregroundColor: Colors.white,
+                              foregroundColor: ColorConstants.white,
                               disabledBackgroundColor: primary.withValues(
                                 alpha: 0.6,
                               ),
-                              disabledForegroundColor: Colors.white,
+                              disabledForegroundColor: ColorConstants.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 14,
@@ -273,7 +268,7 @@ class DeleteAccountPasswordDialog extends StatelessWidget {
                                       height: 18,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: ColorConstants.white,
                                       ),
                                     )
                                     : const Text(

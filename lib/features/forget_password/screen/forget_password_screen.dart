@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/forget_password/logic/forget_password_view_model.dart';
@@ -10,20 +11,18 @@ class ForgetPasswordScreen extends StatefulWidget {
 }
 
 class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
-  final ForgetPasswordViewModel _forgetPasswordViewModel = Get.put(
-    ForgetPasswordViewModel(),
-  );
+  final ForgetPasswordViewModel _forgetPasswordViewModel = Get.find<ForgetPasswordViewModel>();
 
   final GlobalKey<FormState> _forgetKey = GlobalKey<FormState>();
 
-  static const primary = Color(0xFF5146F5);
-  static const primaryDark = Color(0xFF3E35D6);
-  static const primaryLight = Color(0xFF7A70FF);
-  static const textColor = Color(0xFF25254A);
-  static const hintColor = Color(0xFF9696A8);
-  static const borderColor = Color(0xFFE2E2EA);
-  static const bgColor = Color(0xFFF6F6FC);
-  static const fieldFill = Color(0xFFF8F9FD);
+  static const primary = ColorConstants.authPrimary;
+  static const primaryDark = ColorConstants.authPrimaryDark;
+  static const primaryLight = ColorConstants.authPrimaryLight;
+  static const textColor = ColorConstants.authText;
+  static const hintColor = ColorConstants.authHint;
+  static const borderColor = ColorConstants.border;
+  static const bgColor = ColorConstants.authBackground;
+  static const fieldFill = ColorConstants.fieldFill;
 
   // void message(String text) {
   //   ScaffoldMessenger.of(context)
@@ -40,7 +39,7 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
       prefixIcon: Icon(icon, size: 18, color: hintColor),
       suffixIcon: suffix,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ColorConstants.white,
       contentPadding: const EdgeInsets.symmetric(vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -52,7 +51,7 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.redAccent),
+        borderSide: const BorderSide(color: ColorConstants.redAccent),
       ),
     );
   }
@@ -87,9 +86,9 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                     () => Container(
                       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ColorConstants.white,
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: Colors.white, width: 1),
+                        border: Border.all(color: ColorConstants.white, width: 1),
                         boxShadow: [
                           BoxShadow(
                             color: primary.withValues(alpha: 0.08),
@@ -97,7 +96,7 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                             offset: const Offset(0, 14),
                           ),
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
+                            color: ColorConstants.black.withValues(alpha: 0.04),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -222,14 +221,14 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                               errorBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 borderSide: const BorderSide(
-                                  color: Colors.redAccent,
+                                  color: ColorConstants.redAccent,
                                   width: 1.2,
                                 ),
                               ),
                               focusedErrorBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 borderSide: const BorderSide(
-                                  color: Colors.redAccent,
+                                  color: ColorConstants.redAccent,
                                   width: 1.6,
                                 ),
                               ),
@@ -267,8 +266,8 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
+                                  backgroundColor: ColorConstants.transparent,
+                                  shadowColor: ColorConstants.transparent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -281,7 +280,7 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                                           width: 20,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: Colors.white,
+                                            color: ColorConstants.white,
                                           ),
                                         )
                                         : Row(
@@ -293,14 +292,14 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                                               style: TextStyle(
                                                 fontSize: 15.5,
                                                 fontWeight: FontWeight.w700,
-                                                color: Colors.white,
+                                                color: ColorConstants.white,
                                               ),
                                             ),
                                             SizedBox(width: 8),
                                             Icon(
                                               Icons.arrow_forward_rounded,
                                               size: 18,
-                                              color: Colors.white,
+                                              color: ColorConstants.white,
                                             ),
                                           ],
                                         ),

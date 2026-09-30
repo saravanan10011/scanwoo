@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:quick_scanner/features/history/logic/history_controller.dart';
 import 'package:quick_scanner/features/history/screens/history_screen.dart';
 import 'package:quick_scanner/features/home/screen/home_screen.dart';
 import 'package:quick_scanner/features/profile/profile.dart';
@@ -16,18 +17,20 @@ class MainController extends GetxController {
 
   void onNavTap(int value) {
     if (value == index.value) return; // avoid pointless rebuilds
+    // Leaving the History tab -> clear search, filter and page.
+    if (index.value == 1 && Get.isRegistered<HistoryController>()) {
+      Get.find<HistoryController>().resetFilters();
+    }
     index.value = value;
   }
 }
 
 class MainScreen extends StatelessWidget {
-  final int initialIndex;
-
-  const MainScreen({super.key, this.initialIndex = 0});
+  const MainScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final c = Get.put(MainController(initialIndex: initialIndex));
+    final c = Get.find<MainController>();
 
     // Built once, so tab state is preserved by IndexedStack
     final screens = <Widget>[
@@ -37,10 +40,11 @@ class MainScreen extends StatelessWidget {
       const ProfileScreen(),
     ];
 
-    return Scaffold(
-      body: Obx(() => IndexedStack(index: c.index.value, children: screens)),
-      bottomNavigationBar: Obx(
-        () => CommonBottomNav(
+    // One Obx for the whole screen.
+    return Obx(
+      () => Scaffold(
+        body: IndexedStack(index: c.index.value, children: screens),
+        bottomNavigationBar: CommonBottomNav(
           selectedIndex: c.index.value,
           onItemSelected: c.onNavTap,
         ),

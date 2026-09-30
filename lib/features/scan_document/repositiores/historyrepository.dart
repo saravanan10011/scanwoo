@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:quick_scanner/utils/common_color.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -8,8 +10,8 @@ import 'package:quick_scanner/networks/api_status.dart';
 import 'package:quick_scanner/utils/const.dart';
 
 class HistoryRepository {
-  final HistoryController _controller = Get.put(HistoryController());
-  final ProfileController _profileController = Get.put(ProfileController());
+  final HistoryController _controller = Get.find<HistoryController>();
+  final ProfileController _profileController = Get.find<ProfileController>();
 
   Future<dynamic> uploadInvoiceWithImage({
     required String? token,
@@ -46,7 +48,7 @@ class HistoryRepository {
       if (streamedResponse.statusCode == 201) {
         ScaffoldMessenger.of(Get.context!).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green,
+            backgroundColor: ColorConstants.green,
             content: const Text("Invoice Uploading successfully."),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -54,9 +56,9 @@ class HistoryRepository {
             ),
           ),
         );
-        await _controller.fetchInvoices();
-        await _controller.fetchRecent();
-        await _profileController.fetchdashboard();
+        // Refresh in the background; the upload itself is already done.
+        unawaited(_controller.fetchInvoices());
+        unawaited(_profileController.fetchdashboard());
         return SuccessStatus(statusCode: 201, responseStr: responseBody);
       } else {
         return FailureStatus(

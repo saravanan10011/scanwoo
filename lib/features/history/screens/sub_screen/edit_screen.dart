@@ -1,9 +1,15 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/history/model/history_model.dart';
 
-const primary = Color(0xFF4038D8);
-const background = Color(0xFFF5F7FB);
+const primary = ColorConstants.primary;
+const background = ColorConstants.background;
+
+// Remove these if you already have shared _sw/_sh/_sp helpers.
+double _sw(double v) => v * Get.width / 375;
+double _sh(double v) => v * Get.height / 812;
+double _sp(double v) => v * Get.width / 375;
 
 class EditRawTextController extends GetxController {
   final String initialText;
@@ -15,15 +21,52 @@ class EditRawTextController extends GetxController {
     text: initialText,
   );
   final saving = false.obs;
+  final errorText = RxnString();
+
+  @override
+  void onInit() {
+    super.onInit();
+    textCtrl.addListener(() {
+      if (errorText.value != null && textCtrl.text.trim().isNotEmpty) {
+        errorText.value = null;
+      }
+    });
+  }
+
+  bool _validate() {
+    if (textCtrl.text.trim().isEmpty) {
+      errorText.value = 'Raw text cannot be empty';
+      return false;
+    }
+    errorText.value = null;
+    return true;
+  }
 
   Future<void> save() async {
+    if (saving.value) return;
+    if (!_validate()) return;
+
+    final text = textCtrl.text.trim();
+
+    // Nothing changed -> no update needed
+    if (text == initialText.trim()) {
+      Get.back();
+      return;
+    }
+
     saving.value = true;
     try {
-      await onSave(textCtrl.text);
+      await onSave(text);
       Get.back();
     } catch (e) {
       saving.value = false;
-      Get.snackbar('Error', 'Could not save changes');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      Get.snackbar(
+        'Error',
+        msg,
+        backgroundColor: Colors.red.shade600,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -55,30 +98,48 @@ class EditRawTextScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Edit Raw Data'),
+        title: Text('Edit Raw Data', style: TextStyle(fontSize: _sp(18))),
         backgroundColor: primary,
-        foregroundColor: Colors.white,
+        foregroundColor: ColorConstants.white,
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            controller: c.textCtrl,
-            expands: true,
-            minLines: null,
-            maxLines: null,
-            textAlignVertical: TextAlignVertical.top,
-            keyboardType: TextInputType.multiline,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              hintText: 'Raw text',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: primary, width: 1.6),
+          padding: EdgeInsets.all(_sw(16)),
+          child: Obx(
+            () => TextField(
+              controller: c.textCtrl,
+              expands: true,
+              minLines: null,
+              maxLines: null,
+              textAlignVertical: TextAlignVertical.top,
+              keyboardType: TextInputType.multiline,
+              style: TextStyle(fontSize: _sp(14)),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: ColorConstants.white,
+                hintText: 'Raw text',
+                errorText: c.errorText.value,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(_sw(12)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(_sw(12)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(_sw(12)),
+                  borderSide: const BorderSide(color: primary, width: 1.6),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(_sw(12)),
+                  borderSide: BorderSide(color: Colors.red.shade600),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(_sw(12)),
+                  borderSide: BorderSide(
+                    color: Colors.red.shade600,
+                    width: 1.6,
+                  ),
+                ),
               ),
             ),
           ),
@@ -86,12 +147,12 @@ class EditRawTextScreen extends StatelessWidget {
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: EdgeInsets.fromLTRB(_sw(16), _sh(12), _sw(16), _sh(16)),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ColorConstants.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: ColorConstants.black.withValues(alpha: 0.06),
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
@@ -103,24 +164,24 @@ class EditRawTextScreen extends StatelessWidget {
                 // Cancel
                 Expanded(
                   child: SizedBox(
-                    height: 50,
+                    height: _sh(50),
                     child: OutlinedButton(
                       onPressed: c.saving.value ? null : Get.back,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey.shade800,
-                        backgroundColor: Colors.white,
+                        foregroundColor: ColorConstants.grey800,
+                        backgroundColor: ColorConstants.white,
                         side: BorderSide(
-                          color: Colors.grey.shade300,
+                          color: ColorConstants.grey300,
                           width: 1.2,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(_sw(14)),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Cancel',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: _sp(14),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -128,46 +189,46 @@ class EditRawTextScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                SizedBox(width: _sw(12)),
 
                 // Save
                 Expanded(
                   child: SizedBox(
-                    height: 50,
+                    height: _sh(50),
                     child: ElevatedButton(
                       onPressed: c.saving.value ? null : c.save,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: ColorConstants.white,
                         disabledBackgroundColor: primary.withValues(alpha: 0.6),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(_sw(14)),
                         ),
                       ),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child:
                             c.saving.value
-                                ? const SizedBox(
-                                  key: ValueKey('loading'),
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
+                                ? SizedBox(
+                                  key: const ValueKey('loading'),
+                                  width: _sw(20),
+                                  height: _sw(20),
+                                  child: const CircularProgressIndicator(
                                     strokeWidth: 2.2,
-                                    color: Colors.white,
+                                    color: ColorConstants.white,
                                   ),
                                 )
-                                : const Row(
-                                  key: ValueKey('save'),
+                                : Row(
+                                  key: const ValueKey('save'),
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.check_rounded, size: 19),
-                                    SizedBox(width: 7),
+                                    Icon(Icons.check_rounded, size: _sp(19)),
+                                    SizedBox(width: _sw(7)),
                                     Text(
                                       'Save',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: _sp(14),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),

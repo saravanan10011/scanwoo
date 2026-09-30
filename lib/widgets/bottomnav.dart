@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 
 class CommonBottomNav extends StatelessWidget {
@@ -9,12 +10,9 @@ class CommonBottomNav extends StatelessWidget {
     required this.selectedIndex,
     required this.onItemSelected,
   });
-  static const _primary = Color(0xFFFFFFFF);
-  static const _inactive = Color(0xFFB8BED3);
-  static const _bg = Color(0xFF2523A8);
-  // static const _primary = Color(0xFFFFFFFF);
-  // static const _inactive = Color(0xFFBFC5D6);
-  // static const _bg = Color(0xFF2C2AC0);
+  // static const ColorConstants.white = ColorConstants.white;
+  // static const ColorConstants.navInactive = ColorConstants.border6;
+  // static const ColorConstants.navBackground = ColorConstants.primaryDark;
   static const _items = [
     (icon: Icons.home_outlined, active: Icons.home, label: 'Home'),
     (icon: Icons.history_outlined, active: Icons.history, label: 'History'),
@@ -32,11 +30,11 @@ class CommonBottomNav extends StatelessWidget {
       top: false,
       child: Container(
         decoration: BoxDecoration(
-          color: _bg,
+          color: ColorConstants.navBackground,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: ColorConstants.black.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -55,8 +53,8 @@ class CommonBottomNav extends StatelessWidget {
                   activeIcon: item.active,
                   label: item.label,
                   isSelected: selectedIndex == index,
-                  primary: _primary,
-                  inactive: _inactive,
+                  primary: ColorConstants.white,
+                  inactive: ColorConstants.navInactive,
                   onTap: () => onItemSelected(index),
                 );
               }),
@@ -97,7 +95,7 @@ class _NavItem extends StatelessWidget {
         button: true,
         label: label,
         child: Material(
-          color: Colors.transparent,
+          color: ColorConstants.transparent,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
@@ -119,7 +117,7 @@ class _NavItem extends StatelessWidget {
                       color:
                           isSelected
                               ? primary.withValues(alpha: 0.12)
-                              : Colors.transparent,
+                              : ColorConstants.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Icon(

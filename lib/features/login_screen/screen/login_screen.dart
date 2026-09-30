@@ -1,3 +1,5 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/login_screen/logic/login_controller.dart';
@@ -11,18 +13,18 @@ class LoginScreen extends StatefulWidget {
 }
 
 class LoginScreenState extends State<LoginScreen> {
-  final LoginController _loginController = Get.put(LoginController());
+  final LoginController _loginController = Get.find<LoginController>();
 
   final GlobalKey<FormState> _loginkey = GlobalKey<FormState>();
 
-  static const primary = Color(0xFF5146F5);
-  static const primaryDark = Color(0xFF3E35D6);
-  static const primaryLight = Color(0xFF7A70FF);
-  static const textColor = Color(0xFF25254A);
-  static const hintColor = Color(0xFF9696A8);
-  static const borderColor = Color(0xFFE2E2EA);
-  static const bgColor = Color(0xFFF6F6FC);
-  static const fieldFill = Color(0xFFF8F9FD);
+  static const primary = ColorConstants.authPrimary;
+  static const primaryDark = ColorConstants.authPrimaryDark;
+  static const primaryLight = ColorConstants.authPrimaryLight;
+  static const textColor = ColorConstants.authText;
+  static const hintColor = ColorConstants.authHint;
+  static const borderColor = ColorConstants.border;
+  static const bgColor = ColorConstants.authBackground;
+  static const fieldFill = ColorConstants.fieldFill;
 
   // void message(String text) {
   //   ScaffoldMessenger.of(context)
@@ -55,11 +57,17 @@ class LoginScreenState extends State<LoginScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+        borderSide: const BorderSide(
+          color: ColorConstants.redAccent,
+          width: 1.2,
+        ),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1.6),
+        borderSide: const BorderSide(
+          color: ColorConstants.redAccent,
+          width: 1.6,
+        ),
       ),
     );
   }
@@ -95,10 +103,10 @@ class LoginScreenState extends State<LoginScreen> {
                       // Logo mark
                       Center(
                         child: SizedBox(
-                          width: Get.width * 0.22,
-                          height: Get.width * 0.22,
+                          width: Sizes.wp(0.22),
+                          height: Sizes.wp(0.22),
                           child: Padding(
-                            padding: EdgeInsets.all(Get.width * 0.01),
+                            padding: EdgeInsets.all(Sizes.wp(0.01)),
                             child: Image.asset(
                               "assets/images/invoice_logo.png",
                               fit: BoxFit.contain,
@@ -119,7 +127,7 @@ class LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Scan. Extract. Organize.',
+                        'Scan. Extract. Export.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12.5,
@@ -134,9 +142,12 @@ class LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ColorConstants.white,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white, width: 1),
+                          border: Border.all(
+                            color: ColorConstants.white,
+                            width: 1,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: primary.withValues(alpha: 0.07),
@@ -144,7 +155,9 @@ class LoginScreenState extends State<LoginScreen> {
                               offset: const Offset(0, 12),
                             ),
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
+                              color: ColorConstants.black.withValues(
+                                alpha: 0.03,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -358,9 +371,9 @@ class LoginScreenState extends State<LoginScreen> {
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    foregroundColor: Colors.white,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: ColorConstants.transparent,
+                                    foregroundColor: ColorConstants.white,
+                                    shadowColor: ColorConstants.transparent,
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -373,7 +386,7 @@ class LoginScreenState extends State<LoginScreen> {
                                             height: 18,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              color: Colors.white,
+                                              color: ColorConstants.white,
                                             ),
                                           )
                                           : Row(

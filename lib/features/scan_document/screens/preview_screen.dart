@@ -1,44 +1,43 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/routes_list.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:quick_scanner/features/history/screens/edit_screen.dart';
 import 'package:quick_scanner/widgets/exportsheet.dart';
 
 import '../../../services/models/scan_record.dart';
 import '../../../services/scan_history_service.dart';
 
 // Same 375x812 baseline scaling used across the app's other screens.
-double _sw(double px) => Get.width * (px / 375);
-double _sh(double px) => Get.height * (px / 812);
-double _sp(double px) => _sw(px).clamp(px * 0.85, px * 1.25);
 
 class _Palette {
-  static const primary = Color(0xFF4F46E5);
-  static const primarySoft = Color(0xFFEEF0FF);
-  static const accent = Color(0xFF16A34A);
-  static const background = Color(0xFFF7F7FB);
-  static const surface = Color(0xFFFFFFFF);
-  static const ink = Color(0xFF13122B);
-  static const muted = Color(0xFF6B6A85);
-  static const mutedSoft = Color(0xFF9C9BB4);
-  static const line = Color(0xFFEAEAF3);
+  static const primary = ColorConstants.indigo;
+  static const primarySoft = ColorConstants.primaryMist;
+  static const accent = ColorConstants.success;
+  static const background = ColorConstants.backgroundSoft;
+  static const surface = ColorConstants.white;
+  static const ink = ColorConstants.inkDeep;
+  static const muted = ColorConstants.inkMuted;
+  static const mutedSoft = ColorConstants.inkMutedSoft;
+  static const line = ColorConstants.border5;
 }
 
 class _Space {
-  static double get sm => _sw(10);
-  static double get md => _sw(16);
-  static double get lg => _sw(20);
-  static double get xl => _sw(28);
-  static double get xxl => _sw(36);
+  static double get sm => Sizes.w(10);
+  static double get md => Sizes.w(16);
+  static double get lg => Sizes.w(20);
+  static double get xl => Sizes.w(28);
+  static double get xxl => Sizes.w(36);
 }
 
 class _Radius {
-  static double get sm => _sw(10);
-  static double get md => _sw(14);
-  static double get lg => _sw(18);
-  static double get xl => _sw(24);
+  static double get sm => Sizes.w(10);
+  static double get md => Sizes.w(14);
+  static double get lg => Sizes.w(18);
+  static double get xl => Sizes.w(24);
   static const pill = 999.0;
 }
 
@@ -50,7 +49,7 @@ TextStyle _type({
   double letterSpacing = -0.1,
 }) {
   return TextStyle(
-    fontSize: _sp(size),
+    fontSize: Sizes.sp(size),
     fontWeight: weight,
     color: color,
     height: height,
@@ -68,9 +67,9 @@ class ScanPreviewController extends GetxController {
   late final Rx<ScanRecord> record = initialRecord.obs;
 
   Future<void> openEdit() async {
-    final updatedText = await Get.to<String>(
-      () => EditRecordScreen(extractedText: record.value.text),
-      transition: Transition.rightToLeft,
+    final String? updatedText = await Get.toNamed<dynamic>(
+      RouteList.editRecord,
+      arguments: {'extractedText': record.value.text},
     );
 
     if (updatedText == null || updatedText == record.value.text) {
@@ -108,8 +107,8 @@ class ScanPreviewController extends GetxController {
         children: [
           Icon(
             success ? Icons.check_circle_rounded : Icons.info_rounded,
-            color: Colors.white,
-            size: _sw(18),
+            color: ColorConstants.white,
+            size: Sizes.w(18),
           ),
           SizedBox(width: _Space.sm),
           Expanded(
@@ -118,7 +117,7 @@ class ScanPreviewController extends GetxController {
               style: _type(
                 size: 14,
                 weight: FontWeight.w600,
-                color: Colors.white,
+                color: ColorConstants.white,
               ),
             ),
           ),
@@ -136,8 +135,8 @@ class ScanPreviewController extends GetxController {
   void openFullImage(File file) {
     Get.dialog(
       Dialog(
-        insetPadding: EdgeInsets.all(_sw(16)),
-        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(Sizes.w(16)),
+        backgroundColor: ColorConstants.transparent,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -153,20 +152,20 @@ class ScanPreviewController extends GetxController {
               ),
             ),
             Positioned(
-              top: _sw(8),
-              right: _sw(8),
+              top: Sizes.w(8),
+              right: Sizes.w(8),
               child: Material(
-                color: Colors.black.withValues(alpha: 0.55),
+                color: ColorConstants.black.withValues(alpha: 0.55),
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: Get.back,
                   child: Padding(
-                    padding: EdgeInsets.all(_sw(9)),
+                    padding: EdgeInsets.all(Sizes.w(9)),
                     child: Icon(
                       Icons.close_rounded,
-                      color: Colors.white,
-                      size: _sw(18),
+                      color: ColorConstants.white,
+                      size: Sizes.w(18),
                     ),
                   ),
                 ),
@@ -237,14 +236,14 @@ class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: _Palette.primary,
-      surfaceTintColor: Colors.transparent,
+      surfaceTintColor: ColorConstants.transparent,
       scrolledUnderElevation: 1,
       shadowColor: _Palette.ink.withValues(alpha: 0.08),
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_new_rounded, size: _sw(18)),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, size: Sizes.w(18)),
         color: _Palette.background,
         onPressed: Get.back,
       ),
@@ -271,12 +270,12 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dotColor = empty ? _Palette.mutedSoft : _Palette.accent;
-    final bg = empty ? _Palette.background : const Color(0xFFEAFBF1);
-    final fg = empty ? _Palette.muted : const Color(0xFF15803D);
+    final bg = empty ? _Palette.background : ColorConstants.successSoft;
+    final fg = empty ? _Palette.muted : ColorConstants.success2;
     final label = empty ? 'Empty' : 'Text detected';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: _sw(10), vertical: _sw(5)),
+      padding: EdgeInsets.symmetric(horizontal: Sizes.w(10), vertical: Sizes.w(5)),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(_Radius.pill),
@@ -285,11 +284,11 @@ class _StatusChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: _sw(6),
-            height: _sw(6),
+            width: Sizes.w(6),
+            height: Sizes.w(6),
             decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
-          SizedBox(width: _sw(6)),
+          SizedBox(width: Sizes.w(6)),
           Text(
             label,
             style: _type(size: 12, weight: FontWeight.w600, color: fg),
@@ -328,7 +327,7 @@ class _ImageCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.all(_sw(8)),
+      padding: EdgeInsets.all(Sizes.w(8)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_Radius.lg),
         child: hasImage ? _photo() : const _MissingImage(),
@@ -346,7 +345,7 @@ class _ImageCard extends StatelessWidget {
             child: Image.file(
               file,
               width: double.infinity,
-              height: _sh(240),
+              height: Sizes.h(240),
               fit: BoxFit.cover,
             ),
           ),
@@ -354,47 +353,47 @@ class _ImageCard extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            height: _sh(72),
+            height: Sizes.h(72),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.5),
+                    ColorConstants.transparent,
+                    ColorConstants.black.withValues(alpha: 0.5),
                   ],
                 ),
               ),
             ),
           ),
           Positioned(
-            right: _sw(12),
-            bottom: _sw(12),
+            right: Sizes.w(12),
+            bottom: Sizes.w(12),
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: _sw(11),
-                vertical: _sw(7),
+                horizontal: Sizes.w(11),
+                vertical: Sizes.w(7),
               ),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: ColorConstants.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(_Radius.pill),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                border: Border.all(color: ColorConstants.white.withValues(alpha: 0.2)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.zoom_out_map_rounded,
-                    color: Colors.white,
-                    size: _sw(14),
+                    color: ColorConstants.white,
+                    size: Sizes.w(14),
                   ),
-                  SizedBox(width: _sw(6)),
+                  SizedBox(width: Sizes.w(6)),
                   Text(
                     'Tap to zoom',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: _sp(12),
+                      color: ColorConstants.white,
+                      fontSize: Sizes.sp(12),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -414,22 +413,22 @@ class _MissingImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: _sh(180),
+      height: Sizes.h(180),
       alignment: Alignment.center,
       color: _Palette.background,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            height: _sw(56),
-            width: _sw(56),
+            height: Sizes.w(56),
+            width: Sizes.w(56),
             decoration: const BoxDecoration(
               color: _Palette.primarySoft,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.image_not_supported_outlined,
-              size: _sw(26),
+              size: Sizes.w(26),
               color: _Palette.primary,
             ),
           ),
@@ -510,7 +509,7 @@ class _MetaPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: _sw(12)),
+      padding: EdgeInsets.symmetric(vertical: Sizes.w(12)),
       decoration: BoxDecoration(
         color: _Palette.surface,
         borderRadius: BorderRadius.circular(_Radius.md),
@@ -518,8 +517,8 @@ class _MetaPill extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, size: _sw(17), color: _Palette.primary),
-          SizedBox(height: _sw(5)),
+          Icon(icon, size: Sizes.w(17), color: _Palette.primary),
+          SizedBox(height: Sizes.w(5)),
           Text(
             label,
             textAlign: TextAlign.center,
@@ -554,14 +553,14 @@ class _TextCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(top: _Space.lg),
-      padding: EdgeInsets.all(_sw(18)),
+      padding: EdgeInsets.all(Sizes.w(18)),
       decoration: BoxDecoration(
         color: _Palette.surface,
         borderRadius: BorderRadius.circular(_Radius.xl),
         border: Border.all(color: _Palette.line),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0A13122B),
+            color: ColorConstants.shadowInk04,
             blurRadius: 18,
             offset: Offset(0, 8),
           ),
@@ -573,16 +572,16 @@ class _TextCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                height: _sw(36),
-                width: _sw(36),
+                height: Sizes.w(36),
+                width: Sizes.w(36),
                 decoration: BoxDecoration(
                   color: _Palette.primarySoft,
-                  borderRadius: BorderRadius.circular(_sw(11)),
+                  borderRadius: BorderRadius.circular(Sizes.w(11)),
                 ),
                 child: Icon(
                   Icons.description_outlined,
                   color: _Palette.primary,
-                  size: _sw(18),
+                  size: Sizes.w(18),
                 ),
               ),
               SizedBox(width: _Space.sm),
@@ -634,15 +633,15 @@ class _CopyButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(_Radius.sm),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: _sw(12), vertical: _sw(9)),
+          padding: EdgeInsets.symmetric(horizontal: Sizes.w(12), vertical: Sizes.w(9)),
           child: Row(
             children: [
-              Icon(Icons.copy_rounded, size: _sw(15), color: _Palette.primary),
-              SizedBox(width: _sw(6)),
+              Icon(Icons.copy_rounded, size: Sizes.w(15), color: _Palette.primary),
+              SizedBox(width: Sizes.w(6)),
               Text(
                 'Copy',
                 style: TextStyle(
-                  fontSize: _sp(13),
+                  fontSize: Sizes.sp(13),
                   color: _Palette.primary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -665,15 +664,15 @@ class _EmptyTextState extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: _sw(60),
-            width: _sw(60),
+            height: Sizes.w(60),
+            width: Sizes.w(60),
             decoration: const BoxDecoration(
               color: _Palette.background,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.text_fields_rounded,
-              size: _sw(28),
+              size: Sizes.w(28),
               color: _Palette.mutedSoft,
             ),
           ),
@@ -683,7 +682,7 @@ class _EmptyTextState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: _type(size: 14.5, weight: FontWeight.w600),
           ),
-          SizedBox(height: _sw(4)),
+          SizedBox(height: Sizes.w(4)),
           Text(
             'Edit the record to add text yourself.',
             textAlign: TextAlign.center,
@@ -708,7 +707,7 @@ class _FilledText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(_sw(14)),
+      padding: EdgeInsets.all(Sizes.w(14)),
       decoration: BoxDecoration(
         color: _Palette.background,
         borderRadius: BorderRadius.circular(_Radius.md),
@@ -742,7 +741,7 @@ class _ActionBar extends StatelessWidget {
       children: [
         Expanded(
           child: SizedBox(
-            height: _sh(52),
+            height: Sizes.h(52),
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: _Palette.primary,
@@ -754,7 +753,7 @@ class _ActionBar extends StatelessWidget {
               label: Text(
                 'Save',
                 style: TextStyle(
-                  fontSize: _sp(15),
+                  fontSize: Sizes.sp(15),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -765,22 +764,22 @@ class _ActionBar extends StatelessWidget {
         SizedBox(width: _Space.md),
         Expanded(
           child: SizedBox(
-            height: _sh(52),
+            height: Sizes.h(52),
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _Palette.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: ColorConstants.white,
                 elevation: 0,
                 shadowColor: _Palette.primary.withValues(alpha: 0.3),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(_Radius.md),
                 ),
               ),
-              icon: Icon(Icons.ios_share_rounded, size: _sw(18)),
+              icon: Icon(Icons.ios_share_rounded, size: Sizes.w(18)),
               label: Text(
                 'Export',
                 style: TextStyle(
-                  fontSize: _sp(15),
+                  fontSize: Sizes.sp(15),
                   fontWeight: FontWeight.w700,
                 ),
               ),

@@ -1,35 +1,26 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/routes_list.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/history/logic/history_controller.dart';
 import 'package:quick_scanner/features/history/model/history_model.dart';
-import 'package:quick_scanner/features/history/screens/sub_screen/edit_screen.dart';
 import 'package:quick_scanner/features/history/screens/view_img.dart';
 import 'package:quick_scanner/features/history/screens/view_invoice.dart';
 
-const primary = Color(0xFF4038D8);
-const primaryDark = Color(0xFF2C2AC0);
-const primaryLight = Color(0xFF6C63FF);
-const background = Color(0xFFF5F7FB);
-const _textDark = Color(0xFF1A1B25);
-const _textMuted = Color(0xFF8B8D98);
-const _cardIconBg = Color(0xFFEDEDFF);
-const _divider = Color(0xFFE7E8F2);
+const primary = ColorConstants.primary;
+const primaryDark = ColorConstants.primaryDark;
+const primaryLight = ColorConstants.primaryLight;
+const background = ColorConstants.background;
 
 const _maxContentWidth = 720.0;
 
-/// One scale factor for everything. Based on width only (never height), so
-/// landscape / split-screen / tablets don't blow the layout up.
-double _k() => (Get.width / 375).clamp(0.9, 1.25);
-double _sw(double px) => px * _k();
-double _sh(double px) => px * _k();
-double _sp(double px) => px * _k();
-
 class ScanHistoryScreen extends StatelessWidget {
   final VoidCallback? onBack;
-  ScanHistoryScreen({super.key, this.onBack});
+  const ScanHistoryScreen({super.key, this.onBack});
 
-  final c = Get.put(HistoryController());
+  HistoryController get c => Get.find<HistoryController>();
 
   static const _filters = [
     ('All', Icons.apps_rounded),
@@ -41,40 +32,42 @@ class ScanHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    // Centre content on tablets / landscape, normal gutter on phones.
     final side =
         width > _maxContentWidth + 32
             ? (width - _maxContentWidth) / 2
-            : _sw(16);
+            : Sizes.s(16);
     final topInset = MediaQuery.paddingOf(context).top;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: primary,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      // Keep big system font sizes from breaking cards.
-      child: MediaQuery.withClampedTextScaling(
-        minScaleFactor: 0.9,
-        maxScaleFactor: 1.3,
-        child: Scaffold(
-          backgroundColor: background,
-          body: Column(
-            children: [
-              // Solid status-bar area so icons stay readable while scrolling.
-              Container(height: topInset, color: primary),
-              Expanded(child: Obx(() => _body(side))),
-            ],
+    return GetBuilder<HistoryController>(
+      // fires only when the screen is really removed
+      dispose: (_) => c.resetFilters(),
+      builder:
+          (_) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(
+              statusBarColor: primary,
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
+            ),
+            child: MediaQuery.withClampedTextScaling(
+              minScaleFactor: 0.9,
+              maxScaleFactor: 1.3,
+              child: Scaffold(
+                backgroundColor: background,
+                body: Column(
+                  children: [
+                    Container(height: topInset, color: primary),
+                    Expanded(child: Obx(() => _body(side))),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
   Widget _body(double side) {
-    final list = c.filtered; // all matches
-    final pageList = c.paged; // only 7
+    final list = c.filtered;
+    final pageList = c.paged;
     final cur = c.safePage;
     final pages = c.totalPages;
     final grouped = c.grouped(pageList);
@@ -82,6 +75,9 @@ class ScanHistoryScreen extends StatelessWidget {
     final searching = c.query.value.trim().isNotEmpty;
     final isFiltered = searching || c.filter.value != 'All';
     final loadingFirst = c.isLoading.value && c.invoices.isEmpty;
+    final error = c.invoices.isEmpty ? c.errorMessage.value : null;
+    final busyLoading = c.isRefreshing.value || c.isLoadingMore.value;
+    final downloadingId = c.downloadingId.value;
     final offset = (cur - 1) * HistoryController.perPage;
 
     final serials = <dynamic, int>{
@@ -95,46 +91,60 @@ class ScanHistoryScreen extends StatelessWidget {
 
     return RefreshIndicator(
       color: primary,
-      onRefresh: c.fetchInvoices,
+      onRefresh: c.refreshList,
       child: CustomScrollView(
         controller: c.scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // Title block (scrolls away)
           SliverToBoxAdapter(
             child: _titleBlock(total, list.length, isFiltered, side),
           ),
-          // Search + filters (pinned)
           SliverPersistentHeader(
             pinned: true,
             delegate: _PinnedBar(
-              extent: _sh(8 + 48 + 12 + 36 + 16),
+              extent: Sizes.s(6 + 46 + 10 + 34 + 16),
               child: Padding(
-                padding: EdgeInsets.fromLTRB(side, _sh(8), side, _sh(16)),
+                padding: EdgeInsets.fromLTRB(
+                  side,
+                  Sizes.s(6),
+                  side,
+                  Sizes.s(16),
+                ),
                 child: Column(
                   children: [
-                    SizedBox(height: _sh(48), child: _searchBar()),
-                    SizedBox(height: _sh(12)),
-                    SizedBox(height: _sh(36), child: _filterChips()),
+                    SizedBox(height: Sizes.s(46), child: _searchBar()),
+                    SizedBox(height: Sizes.s(10)),
+                    SizedBox(height: Sizes.s(34), child: _filterChips()),
                   ],
                 ),
               ),
             ),
           ),
-          if (loadingFirst)
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(side, _sh(16), side, 0),
-              sliver: SliverList.separated(
-                itemCount: 5,
-                separatorBuilder: (_, _) => SizedBox(height: _sh(12)),
-                itemBuilder: (_, _) => const _SkeletonCard(),
+          if (busyLoading && !loadingFirst)
+            SliverToBoxAdapter(
+              child: LinearProgressIndicator(
+                minHeight: 2.5,
+                color: primary,
+                backgroundColor: ColorConstants.primarySoft,
               ),
-            )
+            ),
+          if (loadingFirst)
+            SliverFillRemaining(hasScrollBody: false, child: _loadingState())
+          else if (error != null)
+            SliverFillRemaining(hasScrollBody: false, child: _errorState(error))
           else if (list.isEmpty)
-            SliverToBoxAdapter(child: _emptyState(searching))
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _emptyState(isFiltered, c.isLoadingMore.value),
+            )
           else
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(side, _sh(16), side, _sh(24)),
+              padding: EdgeInsets.fromLTRB(
+                side,
+                Sizes.s(16),
+                side,
+                Sizes.s(24),
+              ),
               sliver: SliverList.builder(
                 itemCount: rows.length,
                 itemBuilder: (_, i) {
@@ -142,108 +152,70 @@ class ScanHistoryScreen extends StatelessWidget {
                   if (r is (String, int)) {
                     return Padding(
                       padding: EdgeInsets.only(
-                        top: i == 0 ? 0 : _sh(10),
-                        bottom: _sh(10),
+                        top: i == 0 ? 0 : Sizes.s(8),
+                        bottom: Sizes.s(10),
                       ),
                       child: _sectionLabel(r.$1, r.$2),
                     );
                   }
                   final inv = r as InvoiceData;
                   return Padding(
-                    padding: EdgeInsets.only(bottom: _sh(12)),
+                    padding: EdgeInsets.only(bottom: Sizes.s(14)),
                     child: _InvoiceCard(
                       serial: serials[inv.id] ?? i,
                       invoice: inv,
                       onView: () => Get.dialog(InvoiceViewDialog(invoice: inv)),
                       onImages:
                           () => Get.dialog(InvoiceImagesDialog(invoice: inv)),
-                      // was hard-coded to 104 -> use the tapped invoice
+                      downloading: downloadingId == inv.id,
                       onDownload:
                           () => c.downloadInvoice(inv.id, format: 'csv'),
-
                       onEdit:
-                          () => Get.to(
-                            () => EditRawTextScreen(
-                              invoice: inv,
-                              initialText: c.rawTextOf(inv),
-                              onSave: (text) => c.updateRawText(inv.id, text),
-                            ),
+                          () => Get.toNamed(
+                            RouteList.editRawText,
+                            arguments: {
+                              'invoice': inv,
+                              'initialText': c.rawTextOf(inv),
+                              'onSave':
+                                  (String text) =>
+                                      c.updateRawText(inv.id, text),
+                            },
                           ),
                     ),
                   );
                 },
               ),
             ),
-          if (c.isLoadingMore.value)
+          if (c.isLoadingMore.value && list.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.all(_sw(16)),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: primary,
-                    strokeWidth: 2.5,
+                padding: EdgeInsets.all(Sizes.s(16)),
+                child: Center(
+                  child: Text(
+                    'Loading more invoices…',
+                    style: TextStyle(
+                      fontSize: Sizes.s(12),
+                      color: ColorConstants.textMuted,
+                    ),
                   ),
                 ),
               ),
             ),
-          SliverToBoxAdapter(child: SizedBox(height: _sh(16))),
+          if (list.isNotEmpty)
+            SliverToBoxAdapter(child: SizedBox(height: Sizes.s(8))),
           if (list.isNotEmpty && pages > 1)
             SliverToBoxAdapter(
               child: _paginationBar(side, cur, pages, offset, list.length),
             ),
+          SliverToBoxAdapter(child: SizedBox(height: Sizes.s(16))),
         ],
       ),
     );
   }
 
-  void _pickFormat(int invoiceId) {
-    Get.bottomSheet(
-      SafeArea(
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: _sh(8)),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(_sw(20))),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: EdgeInsets.all(_sw(12)),
-                child: Text(
-                  'Download as',
-                  style: TextStyle(
-                    fontSize: _sp(15),
-                    fontWeight: FontWeight.w800,
-                    color: _textDark,
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.picture_as_pdf_rounded,
-                  color: primary,
-                ),
-                title: const Text('PDF'),
-                onTap: () {
-                  Get.back();
-                  c.downloadInvoice(invoiceId, format: 'pdf');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.table_chart_rounded, color: primary),
-                title: const Text('CSV'),
-                onTap: () {
-                  Get.back();
-                  c.downloadInvoice(invoiceId, format: 'csv');
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // -------------------------------------------------------------------------
+  // Pagination
+  // -------------------------------------------------------------------------
 
   Widget _paginationBar(
     double side,
@@ -259,14 +231,27 @@ class ScanHistoryScreen extends StatelessWidget {
     }) {
       return GestureDetector(
         onTap: onTap,
-        child: Container(
-          width: _sw(36),
-          height: _sw(36),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: Sizes.s(36),
+          height: Sizes.s(36),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active ? primary : Colors.white,
-            borderRadius: BorderRadius.circular(_sw(10)),
-            border: Border.all(color: active ? primary : _divider),
+            color: active ? primary : ColorConstants.white,
+            borderRadius: BorderRadius.circular(Sizes.s(12)),
+            border: Border.all(
+              color: active ? primary : ColorConstants.divider,
+            ),
+            boxShadow:
+                active
+                    ? [
+                      BoxShadow(
+                        color: primary.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                    : null,
           ),
           child: child,
         ),
@@ -277,31 +262,37 @@ class ScanHistoryScreen extends StatelessWidget {
     final to = (offset + HistoryController.perPage).clamp(1, count);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(side, 0, side, _sh(8)),
+      padding: EdgeInsets.fromLTRB(side, Sizes.s(8), side, Sizes.s(8)),
       child: Column(
         children: [
           Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: _sw(6),
-            runSpacing: _sw(6),
+            spacing: Sizes.s(6),
+            runSpacing: Sizes.s(6),
             children: [
               box(
                 onTap: cur > 1 ? () => c.goToPage(cur - 1) : null,
                 child: Icon(
                   Icons.chevron_left_rounded,
-                  size: _sw(22),
-                  color: cur > 1 ? _textDark : _divider,
+                  size: Sizes.s(22),
+                  color:
+                      cur > 1
+                          ? ColorConstants.textDark
+                          : ColorConstants.divider,
                 ),
               ),
               for (final p in c.pageItems)
                 p == -1
                     ? SizedBox(
-                      width: _sw(20),
+                      width: Sizes.s(20),
                       child: Text(
                         '…',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: _sp(14), color: _textMuted),
+                        style: TextStyle(
+                          fontSize: Sizes.s(14),
+                          color: ColorConstants.textMuted,
+                        ),
                       ),
                     )
                     : box(
@@ -310,9 +301,12 @@ class ScanHistoryScreen extends StatelessWidget {
                       child: Text(
                         '$p',
                         style: TextStyle(
-                          fontSize: _sp(13),
+                          fontSize: Sizes.s(13),
                           fontWeight: FontWeight.w700,
-                          color: p == cur ? Colors.white : _textDark,
+                          color:
+                              p == cur
+                                  ? ColorConstants.white
+                                  : ColorConstants.textDark,
                         ),
                       ),
                     ),
@@ -320,49 +314,54 @@ class ScanHistoryScreen extends StatelessWidget {
                 onTap: cur < pages ? () => c.goToPage(cur + 1) : null,
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  size: _sw(22),
-                  color: cur < pages ? _textDark : _divider,
+                  size: Sizes.s(22),
+                  color:
+                      cur < pages
+                          ? ColorConstants.textDark
+                          : ColorConstants.divider,
                 ),
               ),
             ],
           ),
-          SizedBox(height: _sh(8)),
+          SizedBox(height: Sizes.s(10)),
           Text(
             'Showing $from–$to of $count',
-            style: TextStyle(fontSize: _sp(11.5), color: _textMuted),
+            style: TextStyle(
+              fontSize: Sizes.s(11.5),
+              color: ColorConstants.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Header
+  // -------------------------------------------------------------------------
+
   Widget _titleBlock(int total, int visible, bool isFiltered, double side) {
     return Container(
       width: double.infinity,
       color: primary,
-      padding: EdgeInsets.fromLTRB(side, _sh(10), side, _sh(6)),
+      padding: EdgeInsets.fromLTRB(side, Sizes.s(12), side, Sizes.s(8)),
       child: Row(
         children: [
-          // if (onBack != null) ...[
-          //   InkWell(
-          //     onTap: onBack,
-          //     borderRadius: BorderRadius.circular(_sw(12)),
-          //     child: Container(
-          //       width: _sw(40),
-          //       height: _sw(40),
-          //       decoration: BoxDecoration(
-          //         color: Colors.white.withValues(alpha: 0.15),
-          //         borderRadius: BorderRadius.circular(_sw(12)),
-          //       ),
-          //       child: Icon(
-          //         Icons.arrow_back_rounded,
-          //         color: Colors.white,
-          //         size: _sw(22),
-          //       ),
-          //     ),
+          // Container(
+          //   width: Sizes.s(42),
+          //   height: Sizes.s(42),
+          //   decoration: BoxDecoration(
+          //     color: ColorConstants.white.withValues(alpha: 0.16),
+          //     borderRadius: BorderRadius.circular(Sizes.s(13)),
           //   ),
-          //   SizedBox(width: _sw(12)),
-          // ],
+          //   child: Icon(
+          //     Icons.receipt_long_rounded,
+          //     color: ColorConstants.white,
+          //     size: Sizes.s(22),
+          //   ),
+          // ),
+          SizedBox(width: Sizes.s(12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,26 +371,47 @@ class ScanHistoryScreen extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: _sp(21),
+                    fontSize: Sizes.s(20),
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
-                    color: Colors.white,
+                    color: ColorConstants.white,
                   ),
                 ),
-                SizedBox(height: _sh(2)),
+                SizedBox(height: Sizes.s(2)),
                 Text(
                   isFiltered
-                      ? '$visible of $total invoices'
-                      : '$total ${total == 1 ? 'invoice' : 'invoices'} saved',
+                      ? 'Showing $visible of $total'
+                      : 'All your scanned invoices',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: _sp(12.5),
-                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: Sizes.s(12),
+                    color: ColorConstants.white.withValues(alpha: 0.78),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
+          SizedBox(width: Sizes.s(8)),
+          // Container(
+          //   padding: EdgeInsets.symmetric(
+          //     horizontal: Sizes.s(12),
+          //     vertical: Sizes.s(6),
+          //   ),
+          //   decoration: BoxDecoration(
+          //     color: ColorConstants.white,
+          //     borderRadius: BorderRadius.circular(Sizes.s(20)),
+          //   ),
+          //   child: Text(
+          //     '$total',
+          //     style: TextStyle(
+          //       fontSize: Sizes.s(13),
+          //       fontWeight: FontWeight.w800,
+          //       color: primaryDark,
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -400,10 +420,10 @@ class ScanHistoryScreen extends StatelessWidget {
   Widget _searchBar() {
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(_sw(14)),
+        borderRadius: BorderRadius.circular(Sizes.s(14)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: ColorConstants.black.withValues(alpha: 0.12),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -411,43 +431,46 @@ class ScanHistoryScreen extends StatelessWidget {
       ),
       child: TextField(
         controller: c.searchController,
-        onChanged: c.setQuery,
+        onChanged: c.onSearchChanged,
         textInputAction: TextInputAction.search,
         style: TextStyle(
-          fontSize: _sp(14),
-          color: _textDark,
+          fontSize: Sizes.s(14),
+          color: ColorConstants.textDark,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: 'Search supplier, invoice no, text...',
-          hintStyle: TextStyle(fontSize: _sp(13.5), color: _textMuted),
+          hintStyle: TextStyle(
+            fontSize: Sizes.s(13.5),
+            color: ColorConstants.textMuted,
+          ),
           prefixIcon: Icon(
             Icons.search_rounded,
-            color: _textMuted,
-            size: _sw(22),
+            color: primary,
+            size: Sizes.s(22),
           ),
           suffixIcon:
-              c.query.value.isNotEmpty
+              c.hasSearchText.value
                   ? IconButton(
                     tooltip: 'Clear',
                     icon: Icon(
                       Icons.close_rounded,
-                      size: _sw(20),
-                      color: _textMuted,
+                      size: Sizes.s(20),
+                      color: ColorConstants.textMuted,
                     ),
                     onPressed: c.clearSearch,
                   )
                   : null,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: ColorConstants.white,
           isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: _sh(12)),
+          contentPadding: EdgeInsets.symmetric(vertical: Sizes.s(12)),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(_sw(14)),
+            borderRadius: BorderRadius.circular(Sizes.s(14)),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(_sw(14)),
+            borderRadius: BorderRadius.circular(Sizes.s(14)),
             borderSide: const BorderSide(color: primaryLight, width: 1.6),
           ),
         ),
@@ -459,7 +482,7 @@ class ScanHistoryScreen extends StatelessWidget {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       itemCount: _filters.length,
-      separatorBuilder: (_, _) => SizedBox(width: _sw(8)),
+      separatorBuilder: (_, _) => SizedBox(width: Sizes.s(8)),
       itemBuilder: (_, i) {
         final (label, icon) = _filters[i];
         final active = label == c.filter.value;
@@ -473,15 +496,15 @@ class ScanHistoryScreen extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               alignment: Alignment.center,
-              padding: EdgeInsets.symmetric(horizontal: _sw(14)),
+              padding: EdgeInsets.symmetric(horizontal: Sizes.s(14)),
               decoration: BoxDecoration(
                 color:
                     active
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.13),
-                borderRadius: BorderRadius.circular(_sw(18)),
+                        ? ColorConstants.white
+                        : ColorConstants.white.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(Sizes.s(18)),
                 border: Border.all(
-                  color: active ? Colors.white : Colors.white24,
+                  color: active ? ColorConstants.white : ColorConstants.white24,
                 ),
               ),
               child: Row(
@@ -489,16 +512,16 @@ class ScanHistoryScreen extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    size: _sw(15),
-                    color: active ? primaryDark : Colors.white,
+                    size: Sizes.s(15),
+                    color: active ? primaryDark : ColorConstants.white,
                   ),
-                  SizedBox(width: _sw(6)),
+                  SizedBox(width: Sizes.s(6)),
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: _sp(12.5),
+                      fontSize: Sizes.s(12.5),
                       fontWeight: FontWeight.w600,
-                      color: active ? primaryDark : Colors.white,
+                      color: active ? primaryDark : ColorConstants.white,
                     ),
                   ),
                 ],
@@ -510,55 +533,140 @@ class ScanHistoryScreen extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------------ body
-
   Widget _sectionLabel(String label, int count) {
     return Row(
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: _sp(13),
+            fontSize: Sizes.s(13),
             fontWeight: FontWeight.w800,
-            color: _textDark,
+            color: ColorConstants.textDark,
           ),
         ),
-        SizedBox(width: _sw(8)),
+        SizedBox(width: Sizes.s(8)),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: _sw(8), vertical: _sh(1.5)),
+          padding: EdgeInsets.symmetric(
+            horizontal: Sizes.s(8),
+            vertical: Sizes.s(1.5),
+          ),
           decoration: BoxDecoration(
-            color: _cardIconBg,
-            borderRadius: BorderRadius.circular(_sw(20)),
+            color: ColorConstants.primarySoft,
+            borderRadius: BorderRadius.circular(Sizes.s(20)),
           ),
           child: Text(
             '$count',
             style: TextStyle(
-              fontSize: _sp(11),
+              fontSize: Sizes.s(11),
               fontWeight: FontWeight.w700,
               color: primary,
             ),
           ),
         ),
-        SizedBox(width: _sw(10)),
-        Expanded(child: Container(height: 1, color: _divider)),
+        SizedBox(width: Sizes.s(10)),
+        Expanded(child: Container(height: 1, color: ColorConstants.divider)),
       ],
     );
   }
 
-  Widget _emptyState(bool searching) {
+  // -------------------------------------------------------------------------
+  // States
+  // -------------------------------------------------------------------------
+
+  Widget _loadingState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: Sizes.s(36),
+            height: Sizes.s(36),
+            child: const CircularProgressIndicator(
+              strokeWidth: 3,
+              color: primary,
+            ),
+          ),
+          SizedBox(height: Sizes.s(16)),
+          Text(
+            'Loading invoices…',
+            style: TextStyle(
+              fontSize: Sizes.s(13),
+              fontWeight: FontWeight.w600,
+              color: ColorConstants.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorState(String message) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(_sw(24), _sh(48), _sw(24), _sh(24)),
+      padding: EdgeInsets.all(Sizes.s(24)),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: Sizes.s(52),
+                color: ColorConstants.textMuted,
+              ),
+              SizedBox(height: Sizes.s(16)),
+              Text(
+                "Couldn't load invoices",
+                style: TextStyle(
+                  fontSize: Sizes.s(16.5),
+                  fontWeight: FontWeight.w800,
+                  color: ColorConstants.textDark,
+                ),
+              ),
+              SizedBox(height: Sizes.s(6)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: Sizes.s(13),
+                  color: ColorConstants.textMuted,
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: Sizes.s(18)),
+              FilledButton.icon(
+                onPressed: c.fetchInvoices,
+                icon: Icon(Icons.refresh_rounded, size: Sizes.s(18)),
+                label: const Text('Try again'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Sizes.s(11)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState(bool isFiltered, bool stillLoading) {
+    return Padding(
+      padding: EdgeInsets.all(Sizes.s(24)),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: _sw(88),
-                height: _sw(88),
+                width: Sizes.s(88),
+                height: Sizes.s(88),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [_cardIconBg, Colors.white],
+                    colors: [ColorConstants.primarySoft, ColorConstants.white],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -572,45 +680,47 @@ class ScanHistoryScreen extends StatelessWidget {
                   ],
                 ),
                 child: Icon(
-                  searching
+                  isFiltered
                       ? Icons.search_off_rounded
                       : Icons.receipt_long_outlined,
-                  size: _sw(38),
+                  size: Sizes.s(38),
                   color: primary,
                 ),
               ),
-              SizedBox(height: _sh(20)),
+              SizedBox(height: Sizes.s(20)),
               Text(
-                searching ? 'No invoices found' : 'No invoices yet',
+                isFiltered ? 'No invoices found' : 'No invoices yet',
                 style: TextStyle(
-                  fontSize: _sp(16.5),
+                  fontSize: Sizes.s(16.5),
                   fontWeight: FontWeight.w800,
-                  color: _textDark,
+                  color: ColorConstants.textDark,
                 ),
               ),
-              SizedBox(height: _sh(6)),
+              SizedBox(height: Sizes.s(6)),
               Text(
-                searching
-                    ? 'Try a different keyword or clear your search.'
+                isFiltered
+                    ? (stillLoading
+                        ? 'Nothing yet — still loading more invoices…'
+                        : 'Try a different keyword or filter.')
                     : 'Your saved invoices will appear here once you scan one.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: _sp(13),
-                  color: _textMuted,
+                  fontSize: Sizes.s(13),
+                  color: ColorConstants.textMuted,
                   height: 1.4,
                 ),
               ),
-              if (searching) ...[
-                SizedBox(height: _sh(18)),
+              if (isFiltered) ...[
+                SizedBox(height: Sizes.s(18)),
                 OutlinedButton.icon(
-                  onPressed: c.clearSearch,
-                  icon: Icon(Icons.refresh_rounded, size: _sw(16)),
-                  label: const Text('Clear search'),
+                  onPressed: c.resetFilters,
+                  icon: Icon(Icons.refresh_rounded, size: Sizes.s(16)),
+                  label: const Text('Clear search & filters'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primary,
                     side: const BorderSide(color: primary, width: 1.2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(_sw(11)),
+                      borderRadius: BorderRadius.circular(Sizes.s(11)),
                     ),
                   ),
                 ),
@@ -647,8 +757,8 @@ class _PinnedBar extends SliverPersistentHeaderDelegate {
       decoration: BoxDecoration(
         color: primary,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(_sw(24)),
-          bottomRight: Radius.circular(_sw(24)),
+          bottomLeft: Radius.circular(Sizes.s(26)),
+          bottomRight: Radius.circular(Sizes.s(26)),
         ),
         boxShadow: [
           BoxShadow(
@@ -667,58 +777,6 @@ class _PinnedBar extends SliverPersistentHeaderDelegate {
 }
 
 // ---------------------------------------------------------------------------
-// Loading placeholder
-// ---------------------------------------------------------------------------
-
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard();
-
-  Widget _bar(double w, double h) => Container(
-    width: w,
-    height: h,
-    decoration: BoxDecoration(
-      color: _divider,
-      borderRadius: BorderRadius.circular(6),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(_sw(14)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_sw(16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _bar(_sw(30), _sw(30)),
-              SizedBox(width: _sw(10)),
-              _bar(_sw(140), _sh(14)),
-              const Spacer(),
-              _bar(_sw(60), _sh(14)),
-            ],
-          ),
-          SizedBox(height: _sh(16)),
-          Row(
-            children: [
-              _bar(_sw(70), _sh(24)),
-              SizedBox(width: _sw(16)),
-              _bar(_sw(60), _sh(24)),
-              SizedBox(width: _sw(16)),
-              _bar(_sw(80), _sh(24)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Invoice card
 // ---------------------------------------------------------------------------
 
@@ -729,8 +787,10 @@ class _InvoiceCard extends StatelessWidget {
   final VoidCallback onImages;
   final VoidCallback onDownload;
   final VoidCallback onEdit;
+  final bool downloading;
 
   const _InvoiceCard({
+    this.downloading = false,
     required this.serial,
     required this.invoice,
     required this.onView,
@@ -761,12 +821,6 @@ class _InvoiceCard extends StatelessWidget {
 
   String _dash(String? v) => (v == null || v.trim().isEmpty) ? '—' : v;
 
-  String _dateText() {
-    final Object? d = invoice.date;
-    if (d is DateTime) return _fmt(d);
-    return _dash(d?.toString());
-  }
-
   // Works whether ocrStatus is an enum or a String
   ({String label, Color color, IconData icon}) _ocr() {
     final raw = invoice.ocrStatus.toString().split('.').last.toLowerCase();
@@ -775,20 +829,20 @@ class _InvoiceCard extends StatelessWidget {
       case 'done':
         return (
           label: 'Done',
-          color: const Color(0xFF2456D6),
+          color: ColorConstants.blue,
           icon: Icons.check_circle_rounded,
         );
       case 'failed':
       case 'error':
         return (
           label: 'Failed',
-          color: Colors.redAccent,
+          color: ColorConstants.redAccent,
           icon: Icons.error_rounded,
         );
       default:
         return (
           label: 'Pending',
-          color: const Color(0xFFF29D1F),
+          color: ColorConstants.warning,
           icon: Icons.schedule_rounded,
         );
     }
@@ -798,150 +852,199 @@ class _InvoiceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ocr = _ocr();
     final hasImages = invoice.images.isNotEmpty;
+    final radius = BorderRadius.circular(Sizes.s(18));
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_sw(18)),
-        border: Border.all(color: _divider.withValues(alpha: 0.7)),
+        color: ColorConstants.white,
+        borderRadius: radius,
+        border: Border.all(
+          color: ColorConstants.divider.withValues(alpha: 0.7),
+        ),
         boxShadow: [
           BoxShadow(
-            color: primary.withValues(alpha: 0.06),
-            blurRadius: 16,
+            color: primary.withValues(alpha: 0.07),
+            blurRadius: 18,
             offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(_sw(18)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(_sw(18)),
-          onTap: onView,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(_sw(14), _sw(14), _sw(8), _sw(6)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ---- SL.NO + Supplier + Gross
-                Padding(
-                  padding: EdgeInsets.only(right: _sw(6)),
-                  child: Row(
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Material(
+          color: ColorConstants.transparent,
+          child: Stack(
+            children: [
+              InkWell(
+                onTap: onView,
+                child: Padding(
+                  padding: EdgeInsets.only(left: Sizes.s(4)),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: _sw(32),
-                        height: _sw(32),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _cardIconBg,
-                          borderRadius: BorderRadius.circular(_sw(10)),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          Sizes.s(14),
+                          Sizes.s(14),
+                          Sizes.s(14),
+                          0,
                         ),
-                        child: Text(
-                          '$serial',
-                          style: TextStyle(
-                            fontSize: _sp(12),
-                            fontWeight: FontWeight.w800,
-                            color: primary,
-                          ),
-                        ),
+                        child: _topRow(ocr),
                       ),
-                      SizedBox(width: _sw(10)),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: _sh(1)),
-                          child: Text(
-                            _dash(invoice.supplier),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: _sp(14.5),
-                              fontWeight: FontWeight.w800,
-                              color: _textDark,
-                              height: 1.25,
-                            ),
-                          ),
-                        ),
+                      SizedBox(height: Sizes.s(12)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: Sizes.s(14)),
+                        child: _detailsPanel(),
                       ),
-                      SizedBox(width: _sw(8)),
-                      Text(
-                        '£${invoice.gross.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: _sp(15.5),
-                          fontWeight: FontWeight.w800,
-                          color: primaryDark,
-                        ),
+                      SizedBox(height: Sizes.s(8)),
+                      Divider(
+                        height: 1,
+                        color: ColorConstants.divider.withValues(alpha: 0.7),
                       ),
+                      _actionsRow(hasImages),
                     ],
                   ),
                 ),
-                SizedBox(height: _sh(12)),
-
-                // ---- Invoice No / Date / Uploaded (soft panel)
-                Container(
-                  width: double.infinity,
-                  margin: EdgeInsets.only(right: _sw(6)),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: _sw(12),
-                    vertical: _sh(10),
-                  ),
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: BorderRadius.circular(_sw(12)),
-                  ),
-                  child: Row(
-                    children: [
-                      _info('Invoice No', _dash(invoice.invoiceNo), flex: 3),
-                      _info('Date', _dateText(), flex: 3),
-                      _info('Uploaded', _fmt(invoice.uploadedAt), flex: 3),
-                    ],
-                  ),
-                ),
-                SizedBox(height: _sh(6)),
-
-                // ---- OCR + Actions
-                Row(
-                  children: [
-                    _statusPill(ocr),
-                    const Spacer(),
-                    _action(Icons.visibility_outlined, 'View', onView),
-                    _action(
-                      Icons.image_outlined,
-                      'Images',
-                      hasImages ? onImages : null,
-                    ),
-                    _action(
-                      Icons.file_download_outlined,
-                      'Download',
-                      onDownload,
-                    ),
-                    _action(Icons.edit_outlined, 'Edit', onEdit),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              // Status accent stripe
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: Sizes.s(4),
+                child: IgnorePointer(child: ColoredBox(color: ocr.color)),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
+  Widget _topRow(({String label, Color color, IconData icon}) ocr) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: Sizes.s(34),
+          height: Sizes.s(34),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: ColorConstants.primarySoft,
+            borderRadius: BorderRadius.circular(Sizes.s(11)),
+          ),
+          child: Text(
+            '$serial',
+            style: TextStyle(
+              fontSize: Sizes.s(12.5),
+              fontWeight: FontWeight.w800,
+              color: primary,
+            ),
+          ),
+        ),
+        SizedBox(width: Sizes.s(10)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _dash(invoice.supplier),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: Sizes.s(14.5),
+                  fontWeight: FontWeight.w800,
+                  color: ColorConstants.textDark,
+                  height: 1.25,
+                ),
+              ),
+              SizedBox(height: Sizes.s(3)),
+              // Text(
+              //   '# ${_dash(invoice.invoiceNo)}',
+              //   maxLines: 1,
+              //   overflow: TextOverflow.ellipsis,
+              //   style: TextStyle(
+              //     fontSize: Sizes.s(11.5),
+              //     fontWeight: FontWeight.w600,
+              //     color: ColorConstants.textMuted,
+              //   ),
+              // ),
+            ],
+          ),
+        ),
+        SizedBox(width: Sizes.s(8)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Text(
+            //   '£${invoice.gross.toStringAsFixed(2)}',
+            //   style: TextStyle(
+            //     fontSize: Sizes.s(16),
+            //     fontWeight: FontWeight.w800,
+            //     color: primaryDark,
+            //   ),
+            // ),
+            SizedBox(height: Sizes.s(5)),
+            _statusPill(ocr),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _detailsPanel() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: Sizes.s(12),
+        vertical: Sizes.s(10),
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(Sizes.s(12)),
+      ),
+      child: Row(
+        children: [
+          _info(
+            Icons.receipt_long_outlined,
+            'Invoice No',
+            _dash(invoice.invoiceNo),
+          ),
+          Container(
+            width: 1,
+            height: Sizes.s(28),
+            margin: EdgeInsets.symmetric(horizontal: Sizes.s(10)),
+            color: ColorConstants.divider,
+          ),
+          _info(
+            Icons.cloud_upload_outlined,
+            'Uploaded',
+            _fmt(invoice.uploadedAt),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _statusPill(({String label, Color color, IconData icon}) ocr) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: _sw(10), vertical: _sh(4)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Sizes.s(8),
+        vertical: Sizes.s(3),
+      ),
       decoration: BoxDecoration(
         color: ocr.color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(_sw(20)),
+        borderRadius: BorderRadius.circular(Sizes.s(20)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(ocr.icon, size: _sw(13), color: ocr.color),
-          SizedBox(width: _sw(4)),
+          Icon(ocr.icon, size: Sizes.s(12), color: ocr.color),
+          SizedBox(width: Sizes.s(4)),
           Text(
             ocr.label,
             style: TextStyle(
-              fontSize: _sp(11),
+              fontSize: Sizes.s(10.5),
               fontWeight: FontWeight.w700,
               color: ocr.color,
             ),
@@ -951,31 +1054,38 @@ class _InvoiceCard extends StatelessWidget {
     );
   }
 
-  Widget _info(String label, String value, {required int flex}) {
+  Widget _info(IconData icon, String label, String value) {
     return Expanded(
-      flex: flex,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: _sp(10.5),
-              color: _textMuted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: _sh(2)),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: _sp(12.5),
-              color: _textDark,
-              fontWeight: FontWeight.w700,
+          Icon(icon, size: Sizes.s(16), color: primary),
+          SizedBox(width: Sizes.s(8)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: Sizes.s(10.5),
+                    color: ColorConstants.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: Sizes.s(1)),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: Sizes.s(12.5),
+                    color: ColorConstants.textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -983,18 +1093,60 @@ class _InvoiceCard extends StatelessWidget {
     );
   }
 
-  /// 40x40 minimum touch target (was ~32).
-  Widget _action(IconData icon, String tooltip, VoidCallback? onTap) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onTap,
-      visualDensity: VisualDensity.compact,
-      constraints: BoxConstraints(minWidth: _sw(40), minHeight: _sw(40)),
-      padding: EdgeInsets.zero,
-      icon: Icon(
-        icon,
-        size: _sw(21),
-        color: onTap == null ? _divider : _textMuted,
+  Widget _actionsRow(bool hasImages) {
+    return Row(
+      children: [
+        _action(Icons.visibility_outlined, 'View', onView),
+        _action(Icons.image_outlined, 'Images', hasImages ? onImages : null),
+        downloading
+            ? Expanded(
+              child: SizedBox(
+                height: Sizes.s(48),
+                child: Center(
+                  child: SizedBox(
+                    width: Sizes.s(18),
+                    height: Sizes.s(18),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: primary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+            : _action(Icons.file_download_outlined, 'Download', onDownload),
+        _action(Icons.edit_outlined, 'Edit', onEdit),
+      ],
+    );
+  }
+
+  Widget _action(IconData icon, String label, VoidCallback? onTap) {
+    final color = onTap == null ? ColorConstants.divider : primary;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: Sizes.s(48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: Sizes.s(19), color: color),
+              SizedBox(height: Sizes.s(2)),
+              Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: Sizes.s(10.5),
+                  fontWeight: FontWeight.w600,
+                  color:
+                      onTap == null
+                          ? ColorConstants.divider
+                          : ColorConstants.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

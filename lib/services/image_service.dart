@@ -1,7 +1,7 @@
-
-import 'package:flutter/material.dart';
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+
 class ImageService {
   final ImagePicker picker = ImagePicker();
   Future<XFile?> pickFromCamera() async {
@@ -14,6 +14,7 @@ class ImageService {
 
     return cropImage(image);
   }
+
   Future<XFile?> pickFromGallery() async {
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
@@ -26,9 +27,7 @@ class ImageService {
   }
 
   Future<List<XFile>> pickMultipleFromGallery() async {
-    final List<XFile> images = await picker.pickMultiImage(
-      imageQuality: 85,
-    );
+    final List<XFile> images = await picker.pickMultiImage(imageQuality: 85);
 
     final List<XFile> croppedImages = [];
 
@@ -44,24 +43,21 @@ class ImageService {
   }
 
   Future<XFile?> cropImage(XFile image) async {
-    final CroppedFile? croppedFile =
-        await ImageCropper().cropImage(
+    final CroppedFile? croppedFile = await ImageCropper().cropImage(
       sourcePath: image.path,
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle : '',
-          toolbarColor: Colors.white,
-          toolbarWidgetColor: Colors.black,
+          toolbarTitle: '',
+          toolbarColor: ColorConstants.white,
+          toolbarWidgetColor: ColorConstants.black,
           // ignore: deprecated_member_use
-          statusBarColor: Colors.white,
-          backgroundColor: Colors.black,
-          activeControlsWidgetColor: Colors.blue,
+          statusBarColor: ColorConstants.white,
+          backgroundColor: ColorConstants.black,
+          activeControlsWidgetColor: ColorConstants.materialBlue,
           initAspectRatio: CropAspectRatioPreset.original,
           lockAspectRatio: false,
         ),
-        IOSUiSettings(
-          title: '',
-        ),
+        IOSUiSettings(title: ''),
       ],
     );
 

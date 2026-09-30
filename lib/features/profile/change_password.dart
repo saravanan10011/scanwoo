@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:quick_scanner/features/profile/logic/profile_controller.dart';
 
 /// Change password for a logged-in user (from Profile).
@@ -14,17 +15,17 @@ class ProfileChangePasswordScreen extends StatefulWidget {
 
 class _ProfileChangePasswordScreenState
     extends State<ProfileChangePasswordScreen> {
-  final ProfileController _c = Get.put(ProfileController());
+  final ProfileController _c = Get.find<ProfileController>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   // ---- Design tokens (matches ForgetPasswordScreen / LoginScreen) ------
-  static const Color primary = Color(0xFF4F46E5);
-  static const Color primaryDark = Color(0xFF4338CA);
-  static const Color primaryLight = Color(0xFF7C74F0);
-  static const Color textPrimary = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color fieldFill = Color(0xFFF9FAFB);
-  static const Color scaffoldBg = Color(0xFFF3F4F6);
+  static const Color primary = ColorConstants.indigo;
+  static const Color primaryDark = ColorConstants.indigoDark;
+  static const Color primaryLight = ColorConstants.indigoLight;
+  static const Color textPrimary = ColorConstants.gray900;
+  static const Color textSecondary = ColorConstants.gray500;
+  static const Color fieldFill = ColorConstants.grayFill;
+  static const Color scaffoldBg = ColorConstants.grayBackground;
 
   @override
   void dispose() {
@@ -86,7 +87,7 @@ class _ProfileChangePasswordScreenState
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ColorConstants.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -95,7 +96,7 @@ class _ProfileChangePasswordScreenState
             offset: const Offset(0, 14),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: ColorConstants.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -119,7 +120,7 @@ class _ProfileChangePasswordScreenState
           ),
           const SizedBox(height: 9),
           const Text(
-            "Enter your current password and choose a new one",
+            "Enter your current password and create a new one",
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13.5, color: textSecondary, height: 1.5),
           ),
@@ -168,7 +169,7 @@ class _ProfileChangePasswordScreenState
           const SizedBox(height: 16),
           Center(
             child: TextButton.icon(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
+              onPressed: isLoading ? null : () => Get.back(),
               style: TextButton.styleFrom(foregroundColor: primary),
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 14),
               label: const Text(
@@ -302,8 +303,8 @@ class _ProfileChangePasswordScreenState
       border: border(null),
       enabledBorder: border(null),
       focusedBorder: border(primary, 1.6),
-      errorBorder: border(Colors.redAccent),
-      focusedErrorBorder: border(Colors.redAccent, 1.6),
+      errorBorder: border(ColorConstants.redAccent),
+      focusedErrorBorder: border(ColorConstants.redAccent, 1.6),
     );
   }
 
@@ -345,10 +346,10 @@ class _ProfileChangePasswordScreenState
                     }
                   },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            shadowColor: Colors.transparent,
+            backgroundColor: ColorConstants.transparent,
+            disabledBackgroundColor: ColorConstants.transparent,
+            foregroundColor: ColorConstants.white,
+            shadowColor: ColorConstants.transparent,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -361,7 +362,7 @@ class _ProfileChangePasswordScreenState
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
-                      color: Colors.white,
+                      color: ColorConstants.white,
                     ),
                   )
                   : const Text(

@@ -12,27 +12,25 @@ class ExtractedDataParser {
       String? key;
       String? value;
       if (line.contains('|')) {
-        final parts = line
-            .split('|')
-            .map((part) => part.trim())
-            .where((part) => part.isNotEmpty)
-            .toList();
+        final parts =
+            line
+                .split('|')
+                .map((part) => part.trim())
+                .where((part) => part.isNotEmpty)
+                .toList();
 
         if (parts.length >= 2) {
           key = parts.first;
           value = parts.sublist(1).join(' ');
         }
-      }
-
-      else if (line.contains(':')) {
+      } else if (line.contains(':')) {
         final parts = line.split(':');
 
         if (parts.length >= 2) {
           key = parts.first.trim();
           value = parts.sublist(1).join(':').trim();
         }
-      }
-      else {
+      } else {
         final result = _detectKnownField(line);
 
         if (result != null) {
@@ -41,10 +39,7 @@ class ExtractedDataParser {
         }
       }
 
-      if (key != null &&
-          value != null &&
-          key.isNotEmpty &&
-          value.isNotEmpty) {
+      if (key != null && value != null && key.isNotEmpty && value.isNotEmpty) {
         data[key] = value;
       }
     }
@@ -61,39 +56,25 @@ class ExtractedDataParser {
       caseSensitive: false,
     );
 
-    final dateRegex = RegExp(
-      r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-    );
+    final dateRegex = RegExp(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b');
 
     final moneyMatch = moneyRegex.firstMatch(line);
     final dateMatch = dateRegex.firstMatch(line);
 
     if (lowerLine.contains('total amount') && moneyMatch != null) {
-      return {
-        'key': 'Total Amount',
-        'value': moneyMatch.group(0)!.trim(),
-      };
+      return {'key': 'Total Amount', 'value': moneyMatch.group(0)!.trim()};
     }
 
     if (lowerLine.contains('total') && moneyMatch != null) {
-      return {
-        'key': 'Total',
-        'value': moneyMatch.group(0)!.trim(),
-      };
+      return {'key': 'Total', 'value': moneyMatch.group(0)!.trim()};
     }
 
     if (lowerLine.contains('amount') && moneyMatch != null) {
-      return {
-        'key': 'Amount',
-        'value': moneyMatch.group(0)!.trim(),
-      };
+      return {'key': 'Amount', 'value': moneyMatch.group(0)!.trim()};
     }
 
     if (lowerLine.contains('date') && dateMatch != null) {
-      return {
-        'key': 'Date',
-        'value': dateMatch.group(0)!.trim(),
-      };
+      return {'key': 'Date', 'value': dateMatch.group(0)!.trim()};
     }
 
     return null;

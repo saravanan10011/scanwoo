@@ -1,3 +1,5 @@
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/history/logic/history_controller.dart';
@@ -6,21 +8,17 @@ import '../../../services/models/scan_record.dart';
 import '../../../utils/helpers.dart';
 import '../../../widgets/exportsheet.dart';
 
-const primary = Color(0xFF3F3DF0);
-const primaryDark = Color(0xFF211F8C);
-const accent = Color(0xFF7B79FF);
-const background = Color(0xFFF6F7FB);
-const textDark = Color(0xFF1D1E2C);
-const textMuted = Color(0xFF8C8FA3);
-
-double _sw(double px) => Get.width * (px / 375);
-double _sh(double px) => Get.height * (px / 812);
-double _sp(double px) => _sw(px).clamp(px * 0.85, px * 1.25);
+const primary = ColorConstants.primaryBright;
+const primaryDark = ColorConstants.primaryDeep;
+const accent = ColorConstants.accent;
+const background = ColorConstants.backgroundAlt;
+const textDark = ColorConstants.textDark2;
+const textMuted = ColorConstants.textMuted2;
 
 class ExportScreen extends StatelessWidget {
   ExportScreen({super.key});
 
-  final c = Get.put(HistoryController());
+  final c = Get.find<HistoryController>();
 
   Future<void> _export(BuildContext context) async {
     if (c.isExporting.value) return;
@@ -53,7 +51,7 @@ class ExportScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: background,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(_sh(64)),
+        preferredSize: Size.fromHeight(Sizes.h(64)),
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -64,16 +62,16 @@ class ExportScreen extends StatelessWidget {
             ),
           ),
           child: AppBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: ColorConstants.transparent,
             elevation: 0,
             centerTitle: false,
-            toolbarHeight: _sh(64),
+            toolbarHeight: Sizes.h(64),
             title: Text(
               'Export Records',
               style: TextStyle(
-                fontSize: _sp(21),
+                fontSize: Sizes.sp(21),
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: ColorConstants.white,
                 letterSpacing: -0.3,
               ),
             ),
@@ -90,29 +88,34 @@ class ExportScreen extends StatelessWidget {
           onRefresh: c.fetchRecent,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(_sw(18), _sh(20), _sw(18), _sh(32)),
+            padding: EdgeInsets.fromLTRB(
+              Sizes.w(18),
+              Sizes.h(20),
+              Sizes.w(18),
+              Sizes.h(32),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (total > 0) ...[
                   sectionHeader('Export Options'),
-                  SizedBox(height: _sh(16)),
+                  SizedBox(height: Sizes.h(16)),
                   exportOption(
                     icon: Icons.receipt_long_rounded,
-                    color: const Color(0xFF2E7D32),
-                    title: 'Export Raw Data',
+                    color: ColorConstants.success4,
+                    title: 'Export Invoice Data',
                     subtitle:
-                        'Download raw text of $total invoices as PDF or Excel',
+                        'Download the extracted invoice data in PDF or Excel format.',
                     busy: c.isExporting.value,
                     onTap: () => _export(context),
                   ),
-                  SizedBox(height: _sh(24)),
+                  SizedBox(height: Sizes.h(24)),
                 ],
                 sectionHeader('Recent Records'),
-                SizedBox(height: _sh(16)),
+                SizedBox(height: Sizes.h(16)),
                 if (loading)
                   Padding(
-                    padding: EdgeInsets.symmetric(vertical: _sh(32)),
+                    padding: EdgeInsets.symmetric(vertical: Sizes.h(32)),
                     child: const Center(
                       child: CircularProgressIndicator(color: primary),
                     ),
@@ -133,7 +136,7 @@ class ExportScreen extends StatelessWidget {
     return Text(
       title,
       style: TextStyle(
-        fontSize: _sp(16.5),
+        fontSize: Sizes.sp(16.5),
         fontWeight: FontWeight.w800,
         color: textDark,
         letterSpacing: -0.2,
@@ -150,20 +153,20 @@ class ExportScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(_sw(18)),
+      color: ColorConstants.white,
+      borderRadius: BorderRadius.circular(Sizes.w(18)),
       child: InkWell(
-        borderRadius: BorderRadius.circular(_sw(18)),
+        borderRadius: BorderRadius.circular(Sizes.w(18)),
         onTap: busy ? null : onTap,
         child: Container(
-          constraints: BoxConstraints(minHeight: _sh(76)),
-          padding: EdgeInsets.all(_sw(18)),
+          constraints: BoxConstraints(minHeight: Sizes.h(76)),
+          padding: EdgeInsets.all(Sizes.w(18)),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_sw(18)),
-            border: Border.all(color: const Color(0xFFEEEFF5)),
+            borderRadius: BorderRadius.circular(Sizes.w(18)),
+            border: Border.all(color: ColorConstants.surfaceMuted),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: ColorConstants.black.withValues(alpha: 0.04),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -172,8 +175,8 @@ class ExportScreen extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: _sw(54),
-                height: _sw(54),
+                width: Sizes.w(54),
+                height: Sizes.w(54),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -183,11 +186,11 @@ class ExportScreen extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(_sw(15)),
+                  borderRadius: BorderRadius.circular(Sizes.w(15)),
                 ),
-                child: Icon(icon, color: color, size: _sw(26)),
+                child: Icon(icon, color: color, size: Sizes.w(26)),
               ),
-              SizedBox(width: _sw(16)),
+              SizedBox(width: Sizes.w(16)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,37 +198,40 @@ class ExportScreen extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: _sp(15.5),
+                        fontSize: Sizes.sp(15.5),
                         fontWeight: FontWeight.w700,
                         color: textDark,
                       ),
                     ),
-                    SizedBox(height: _sh(5)),
+                    SizedBox(height: Sizes.h(5)),
                     Text(
                       busy ? 'Preparing your data...' : subtitle,
-                      style: TextStyle(fontSize: _sp(12.5), color: textMuted),
+                      style: TextStyle(
+                        fontSize: Sizes.sp(12.5),
+                        color: textMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
               busy
                   ? SizedBox(
-                    width: _sw(20),
-                    height: _sw(20),
+                    width: Sizes.w(20),
+                    height: Sizes.w(20),
                     child: const CircularProgressIndicator(
                       strokeWidth: 2.5,
                       color: primary,
                     ),
                   )
                   : Container(
-                    padding: EdgeInsets.all(_sw(8)),
+                    padding: EdgeInsets.all(Sizes.w(8)),
                     decoration: BoxDecoration(
                       color: background,
-                      borderRadius: BorderRadius.circular(_sw(22)),
+                      borderRadius: BorderRadius.circular(Sizes.w(22)),
                     ),
                     child: Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: _sw(14),
+                      size: Sizes.w(14),
                       color: textMuted,
                     ),
                   ),
@@ -241,16 +247,19 @@ class ExportScreen extends StatelessWidget {
         inv.supplier.trim().isEmpty ? 'Unknown supplier' : inv.supplier;
 
     return Container(
-      margin: EdgeInsets.only(bottom: _sh(12)),
-      constraints: BoxConstraints(minHeight: _sh(72)),
-      padding: EdgeInsets.symmetric(horizontal: _sw(16), vertical: _sh(14)),
+      margin: EdgeInsets.only(bottom: Sizes.h(12)),
+      constraints: BoxConstraints(minHeight: Sizes.h(72)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Sizes.w(16),
+        vertical: Sizes.h(14),
+      ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_sw(16)),
-        border: Border.all(color: const Color(0xFFEEEFF5)),
+        color: ColorConstants.white,
+        borderRadius: BorderRadius.circular(Sizes.w(16)),
+        border: Border.all(color: ColorConstants.surfaceMuted),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: ColorConstants.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -259,8 +268,8 @@ class ExportScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: _sw(44),
-            height: _sw(44),
+            width: Sizes.w(44),
+            height: Sizes.w(44),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -270,15 +279,15 @@ class ExportScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(_sw(12)),
+              borderRadius: BorderRadius.circular(Sizes.w(12)),
             ),
             child: Icon(
               Icons.receipt_long_rounded,
               color: primary,
-              size: _sw(21),
+              size: Sizes.w(21),
             ),
           ),
-          SizedBox(width: _sw(14)),
+          SizedBox(width: Sizes.w(14)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,25 +298,25 @@ class ExportScreen extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: _sp(14.5),
+                    fontSize: Sizes.sp(14.5),
                     fontWeight: FontWeight.w600,
                     color: textDark,
                     height: 1.2,
                   ),
                 ),
-                SizedBox(height: _sh(3)),
+                SizedBox(height: Sizes.h(3)),
                 Row(
                   children: [
                     Icon(
                       Icons.access_time_rounded,
-                      size: _sw(12),
+                      size: Sizes.w(12),
                       color: textMuted.withValues(alpha: 0.8),
                     ),
-                    SizedBox(width: _sw(4)),
+                    SizedBox(width: Sizes.w(4)),
                     Text(
                       formatShortDate(inv.uploadedAt),
                       style: TextStyle(
-                        fontSize: _sp(12),
+                        fontSize: Sizes.sp(12),
                         fontWeight: FontWeight.w500,
                         color: textMuted.withValues(alpha: 0.8),
                       ),
@@ -317,11 +326,11 @@ class ExportScreen extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: _sw(8)),
+          SizedBox(width: Sizes.w(8)),
           Text(
             '£${inv.gross.toStringAsFixed(2)}',
             style: TextStyle(
-              fontSize: _sp(14),
+              fontSize: Sizes.sp(14),
               fontWeight: FontWeight.w800,
               color: textDark,
             ),
@@ -334,17 +343,20 @@ class ExportScreen extends StatelessWidget {
   Widget emptyState() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(vertical: _sh(52), horizontal: _sw(28)),
+      padding: EdgeInsets.symmetric(
+        vertical: Sizes.h(52),
+        horizontal: Sizes.w(28),
+      ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_sw(20)),
-        border: Border.all(color: const Color(0xFFEEEFF5)),
+        color: ColorConstants.white,
+        borderRadius: BorderRadius.circular(Sizes.w(20)),
+        border: Border.all(color: ColorConstants.surfaceMuted),
       ),
       child: Column(
         children: [
           Container(
-            width: _sw(68),
-            height: _sw(68),
+            width: Sizes.w(68),
+            height: Sizes.w(68),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -358,24 +370,28 @@ class ExportScreen extends StatelessWidget {
             ),
             child: Icon(
               Icons.document_scanner_rounded,
-              size: _sw(30),
+              size: Sizes.w(30),
               color: primary,
             ),
           ),
-          SizedBox(height: _sh(22)),
+          SizedBox(height: Sizes.h(22)),
           Text(
             'No records yet',
             style: TextStyle(
-              fontSize: _sp(16.5),
+              fontSize: Sizes.sp(16.5),
               fontWeight: FontWeight.w800,
               color: textDark,
             ),
           ),
-          SizedBox(height: _sh(8)),
+          SizedBox(height: Sizes.h(8)),
           Text(
             'Scan a document to get started.\nEverything you scan will appear here,\nready to export as PDF or Excel.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: _sp(13), color: textMuted, height: 1.5),
+            style: TextStyle(
+              fontSize: Sizes.sp(13),
+              color: textMuted,
+              height: 1.5,
+            ),
           ),
         ],
       ),

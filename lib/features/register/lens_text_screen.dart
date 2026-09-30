@@ -1,4 +1,4 @@
-// import 'dart:io';
+// import 'package:quick_scanner/utils/common_color.dart';
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
@@ -142,7 +142,7 @@
 //               ),
 //               padding: const EdgeInsets.all(16),
 //               decoration: BoxDecoration(
-//                 color: Colors.grey.shade100,
+//                 color: ColorConstants.grey100,
 //                 borderRadius: BorderRadius.circular(16),
 //               ),
 //               child: SingleChildScrollView(

@@ -16,8 +16,8 @@ class HistoryRespostiresImp extends HistoryRespostires {
   final ApiServices _apiServices = ApiServices();
 
   @override
-  Future<dynamic> invoiceList() async {
-    final url = "${APICalls.baseUrl}/invoices-list";
+  Future<dynamic> invoiceList({int page = 1}) async {
+    final url = "${APICalls.baseUrl}/invoices-list?page=$page";
     final response = await _apiServices.getService(url);
     return response;
   }

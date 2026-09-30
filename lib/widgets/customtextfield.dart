@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 
 class CustomTextField extends StatelessWidget {
@@ -16,7 +17,7 @@ class CustomTextField extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: ColorConstants.grey300,
         ),
       ),
       child: TextField(

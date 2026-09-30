@@ -1,3 +1,4 @@
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -21,7 +22,7 @@ class AppAlert {
       titleText: Text(
         title ?? config.title,
         style: const TextStyle(
-          color: Colors.white,
+          color: ColorConstants.white,
           fontWeight: FontWeight.w600,
           fontSize: 15,
         ),
@@ -29,11 +30,11 @@ class AppAlert {
       messageText: Text(
         message,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.92),
+          color: ColorConstants.white.withValues(alpha: 0.92),
           fontSize: 13,
         ),
       ),
-      icon: Icon(config.icon, color: Colors.white, size: 28),
+      icon: Icon(config.icon, color: ColorConstants.white, size: 28),
       shouldIconPulse: false,
       backgroundColor: config.color,
       borderRadius: 12,
@@ -48,7 +49,7 @@ class AppAlert {
       dismissDirection: DismissDirection.horizontal,
       boxShadows: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.15),
+          color: ColorConstants.black.withValues(alpha: 0.15),
           blurRadius: 12,
           offset: const Offset(0, 4),
         ),
@@ -76,25 +77,25 @@ class AppAlert {
     switch (type) {
       case AlertType.success:
         return _AlertConfig(
-          const Color(0xFF2E9E5B),
+          ColorConstants.success3,
           Icons.check_circle_rounded,
           'Success',
         );
       case AlertType.error:
         return _AlertConfig(
-          const Color(0xFFD64545),
+          ColorConstants.danger3,
           Icons.error_rounded,
           'Error',
         );
       case AlertType.warning:
         return _AlertConfig(
-          const Color(0xFFE59A1F),
+          ColorConstants.warning2,
           Icons.warning_rounded,
           'Warning',
         );
       case AlertType.info:
         return _AlertConfig(
-          const Color(0xFF3A6FD8),
+          ColorConstants.blueSoft,
           Icons.info_rounded,
           'Info',
         );

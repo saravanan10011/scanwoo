@@ -1,19 +1,16 @@
+import 'package:quick_scanner/features/scan_document/screens/scanner_screen.dart';
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/routes_list.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/features/scan_document/logic/scannercontroller.dart';
 import 'package:quick_scanner/features/scan_document/repositiores/historyrepository.dart';
-import 'package:quick_scanner/features/scan_document/screens/preview_screen.dart';
 import '../../../services/models/scan_record.dart';
 import '../../../networks/data_service.dart';
 import '../../../services/scan_history_service.dart';
-
-const _primary = Color(0xFF4038D8);
-const _primaryDark = Color(0xFF2C2AC0);
-const _background = Color(0xFFF6F7FB);
-const _textDark = Color(0xFF1D1E2C);
-const _textMuted = Color(0xFF8C8FA3);
 
 class MultiDocumentResultController extends GetxController {
   final List<File> initialImages;
@@ -34,6 +31,9 @@ class MultiDocumentResultController extends GetxController {
 
   final currentIndex = 0.obs;
   final saving = false.obs;
+  final canFinish = false.obs;
+  final currentHasText = false.obs;
+  final emptyDocs = <int>[].obs;
 
   @override
   void onInit() {
@@ -50,10 +50,81 @@ class MultiDocumentResultController extends GetxController {
               : <String, dynamic>{},
     );
 
-    controllers =
-        extractedTexts
-            .map((text) => TextEditingController(text: text))
-            .toList();
+    controllers = List.generate(initialImages.length, (i) {
+      final ctrl = TextEditingController(
+        text: i < extractedTexts.length ? extractedTexts[i] : '',
+      );
+      ctrl.addListener(_updateCanFinish);
+      return ctrl;
+    });
+    ever(currentIndex, (_) => _updateCanFinish());
+
+    _updateCanFinish();
+  }
+
+  void removeImage(int index) {
+    if (saving.value || images.length <= 1) {
+      if (images.length <= 1) {
+        _snack('At least one document is required');
+      }
+      return;
+    }
+
+    final removedFile = images[index];
+
+    images.removeAt(index);
+    extractedDataList.removeAt(index);
+
+    final removedController = controllers.removeAt(index);
+    removedController.dispose();
+
+    // Keep the Scan Documents screen in sync
+    _removeFromScanner(removedFile);
+
+    if (currentIndex.value >= images.length) {
+      currentIndex.value = images.length - 1;
+    } else if (currentIndex.value > index) {
+      currentIndex.value--;
+    }
+
+    _updateCanFinish();
+  }
+
+  void _removeFromScanner(File file) {
+    if (!Get.isRegistered<ScannerController>()) return;
+
+    final scannerImages = Get.find<ScannerController>().images;
+    scannerImages.removeWhere((f) => f.path == file.path);
+
+    // Keep the Scan Documents screen's selected thumbnail in range
+    if (Get.isRegistered<ScannerScreenController>()) {
+      final sc = Get.find<ScannerScreenController>();
+      if (scannerImages.isEmpty) {
+        sc.selectedImage.value = 0;
+      } else if (sc.selectedImage.value >= scannerImages.length) {
+        sc.selectedImage.value = scannerImages.length - 1;
+      }
+    }
+  }
+
+  bool get hasEmptyText => controllers.any((c) => c.text.trim().isEmpty);
+
+  void _updateCanFinish() {
+    canFinish.value = !hasEmptyText;
+
+    final i = currentIndex.value;
+    currentHasText.value =
+        i >= 0 &&
+        i < controllers.length &&
+        controllers[i].text.trim().isNotEmpty;
+
+    final empty = <int>[
+      for (int k = 0; k < controllers.length; k++)
+        if (controllers[k].text.trim().isEmpty) k + 1,
+    ];
+    if (empty.join(',') != emptyDocs.join(',')) {
+      emptyDocs.assignAll(empty);
+    }
   }
 
   @override
@@ -67,7 +138,9 @@ class MultiDocumentResultController extends GetxController {
   void _snack(String message, {Color? backgroundColor}) {
     final ctx = Get.context;
     if (ctx == null) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(
+    final messenger = ScaffoldMessenger.of(ctx);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: backgroundColor,
@@ -83,7 +156,7 @@ class MultiDocumentResultController extends GetxController {
     await Clipboard.setData(
       ClipboardData(text: controllers[currentIndex.value].text),
     );
-    _snack('Text copied', backgroundColor: _primary);
+    _snack('Text copied', backgroundColor: ColorConstants.primary);
   }
 
   /// Returns the extracted-fields map for document [i], or an empty map
@@ -105,57 +178,197 @@ class MultiDocumentResultController extends GetxController {
     currentIndex.value--;
   }
 
+  /// Called when Next / Finish is tapped.
+  /// Shows an alert if the required document(s) have no extracted text.
+  void onActionTap() {
+    if (saving.value) return;
+
+    final isLast = currentIndex.value == images.length - 1;
+
+    // Current document has no text
+    if (!currentHasText.value) {
+      _showNoTextAlert(
+        title: 'No extracted text',
+        message:
+            'Document ${currentIndex.value + 1} has no text. Please add text or remove it.',
+      );
+      return;
+    }
+
+    // Finish: some other document has no text
+    if (isLast && !canFinish.value) {
+      _showNoTextAlert(
+        title: 'Missing extracted text',
+        message:
+            'Document ${emptyDocs.join(', ')} has no extracted text.\n\n'
+            'Please enter the text or remove the document before finishing.',
+        jumpTo: emptyDocs.first - 1,
+      );
+      return;
+    }
+
+    nextOrFinish();
+  }
+
+  double _sw(double v) => Get.width / 375 * v;
+  double _sh(double v) => Get.height / 812 * v;
+  double _sp(double v) => (Get.width / 375).clamp(0.85, 1.25) * v;
+  Future<void> _showNoTextAlert({
+    required String title,
+    required String message,
+    int? jumpTo,
+  }) async {
+    await Get.dialog(
+      Dialog(
+        backgroundColor: ColorConstants.white,
+        elevation: 0,
+        insetPadding: EdgeInsets.symmetric(horizontal: _sw(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_sw(24)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(_sw(22), _sh(26), _sw(22), _sh(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon badge with soft halo
+              Container(
+                padding: EdgeInsets.all(_sw(10)),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ColorConstants.danger.withOpacity(0.08),
+                ),
+                child: Container(
+                  width: _sw(56),
+                  height: _sw(56),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ColorConstants.danger.withOpacity(0.14),
+                  ),
+                  child: Icon(
+                    Icons.text_snippet_outlined,
+                    color: ColorConstants.danger,
+                    size: _sp(28),
+                  ),
+                ),
+              ),
+              SizedBox(height: _sh(18)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: ColorConstants.textDark2,
+                  fontSize: _sp(18),
+                  height: 1.25,
+                ),
+              ),
+              SizedBox(height: _sh(8)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ColorConstants.textMuted2,
+                  fontSize: _sp(13.5),
+                  height: 1.45,
+                ),
+              ),
+              SizedBox(height: _sh(22)),
+              SizedBox(
+                width: double.infinity,
+                height: _sh(46),
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorConstants.primary,
+                    foregroundColor: ColorConstants.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(_sw(14)),
+                    ),
+                  ),
+                  child: Text(
+                    'Got it',
+                    style: TextStyle(
+                      fontSize: _sp(15),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+
+    // After closing, jump to the first empty document
+    if (jumpTo != null) goTo(jumpTo);
+  }
+
   void nextOrFinish() {
     if (saving.value) return;
+    if (!currentHasText.value) return;
+
     if (currentIndex.value == images.length - 1) {
+      if (!canFinish.value) return;
       saveDocuments();
     } else {
       currentIndex.value++;
     }
   }
 
-  void removeImage(int index) {
-    if (saving.value || images.length <= 1) {
-      if (images.length <= 1) {
-        _snack('At least one document is required');
-      }
-      return;
-    }
+  // void removeImage(int index) {
+  //   if (saving.value || images.length <= 1) {
+  //     if (images.length <= 1) {
+  //       _snack('At least one document is required');
+  //     }
+  //     return;
+  //   }
 
-    images.removeAt(index);
-    extractedDataList.removeAt(index);
+  //   images.removeAt(index);
+  //   extractedDataList.removeAt(index);
 
-    final removedController = controllers.removeAt(index);
-    removedController.dispose();
+  //   final removedController = controllers.removeAt(index);
+  //   removedController.dispose();
 
-    if (currentIndex.value >= images.length) {
-      currentIndex.value = images.length - 1;
-    } else if (currentIndex.value > index) {
-      currentIndex.value--;
-    }
-  }
+  //   if (currentIndex.value >= images.length) {
+  //     currentIndex.value = images.length - 1;
+  //   } else if (currentIndex.value > index) {
+  //     currentIndex.value--;
+  //   }
+
+  //   _updateCanFinish();
+  // }
 
   Future<void> confirmRemoveImage(int index) async {
     if (saving.value) return;
 
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: ColorConstants.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Remove document?',
-          style: TextStyle(fontWeight: FontWeight.w800, color: _textDark),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: ColorConstants.textDark2,
+          ),
         ),
         content: const Text(
           'This document will be removed from the batch and won\'t be saved.',
-          style: TextStyle(color: _textMuted, fontSize: 13.5),
+          style: TextStyle(color: ColorConstants.textMuted2, fontSize: 13.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: _textMuted, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: ColorConstants.textMuted2,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           TextButton(
@@ -163,7 +376,7 @@ class MultiDocumentResultController extends GetxController {
             child: const Text(
               'Remove',
               style: TextStyle(
-                color: Color(0xFFE0473E),
+                color: ColorConstants.danger,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -245,7 +458,10 @@ class MultiDocumentResultController extends GetxController {
 
       if (savedRecords.isEmpty) {
         saving.value = false;
-        _snack('No documents available to save', backgroundColor: Colors.red);
+        _snack(
+          'No documents available to save',
+          backgroundColor: ColorConstants.red,
+        );
         return;
       }
 
@@ -276,13 +492,14 @@ class MultiDocumentResultController extends GetxController {
       }
 
       // Remove Scanner and Result from the stack, keeping Home at the bottom
-      Get.offUntil(
-        GetPageRoute(page: () => ScanPreviewScreen(record: firstRecord)),
+      Get.offNamedUntil(
+        RouteList.scanPreview,
         (route) => route.isFirst,
+        arguments: {'record': firstRecord},
       );
     } catch (e) {
       saving.value = false;
-      _snack('Failed to save: $e', backgroundColor: Colors.red);
+      _snack('Failed to save: $e', backgroundColor: ColorConstants.red);
     }
   }
 }
@@ -309,59 +526,62 @@ class MultiDocumentResultScreen extends StatelessWidget {
       ),
     );
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: _primaryDark,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: _background,
-        appBar: AppBar(
-          backgroundColor: _primaryDark,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            onPressed: () => Get.back(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          ),
-          titleSpacing: 0,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Extracted Documents',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Obx(
-                () => Text(
-                  'Document ${c.currentIndex.value + 1} of ${c.images.length}',
-                  style: const TextStyle(fontSize: 11.5, color: Colors.white70),
-                ),
-              ),
-            ],
-          ),
+    return Obx(
+      () => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: ColorConstants.primaryDark,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
-        body: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: Get.width * 0.04,
-            vertical: Get.height * 0.018,
+        child: Scaffold(
+          backgroundColor: ColorConstants.backgroundAlt,
+          appBar: AppBar(
+            backgroundColor: ColorConstants.primaryDark,
+            foregroundColor: ColorConstants.white,
+            elevation: 0,
+            leading: IconButton(
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            ),
+            titleSpacing: 0,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Extracted Documents',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Document ${c.currentIndex.value + 1} of ${c.images.length}',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: ColorConstants.white70,
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              _image(c),
-              SizedBox(height: Get.height * 0.016),
-              _documents(c),
-              SizedBox(height: Get.height * 0.016),
-              _textBox(c),
-              SizedBox(height: Get.height * 0.016),
-              _navigation(c),
-            ],
+          body: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: Sizes.wp(0.04),
+              vertical: Sizes.hp(0.018),
+            ),
+            child: Column(
+              children: [
+                _image(c),
+                SizedBox(height: Sizes.hp(0.016)),
+                _documents(c),
+                SizedBox(height: Sizes.hp(0.016)),
+                _textBox(c),
+                SizedBox(height: Sizes.hp(0.016)),
+                _navigation(c),
+              ],
+            ),
           ),
         ),
       ),
@@ -370,20 +590,18 @@ class MultiDocumentResultScreen extends StatelessWidget {
 
   Widget _image(MultiDocumentResultController c) {
     return Container(
-      height: Get.height * 0.23,
-      width: Get.width,
+      height: Sizes.hp(0.23),
+      width: Sizes.screenWidth,
       padding: const EdgeInsets.all(10),
       decoration: _card(),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: ColoredBox(
-          color: const Color(0xFFF1F2F6),
-          child: Obx(
-            () => InteractiveViewer(
-              child: Image.file(
-                c.images[c.currentIndex.value],
-                fit: BoxFit.contain,
-              ),
+          color: ColorConstants.surfaceGray,
+          child: InteractiveViewer(
+            child: Image.file(
+              c.images[c.currentIndex.value],
+              fit: BoxFit.contain,
             ),
           ),
         ),
@@ -392,184 +610,152 @@ class MultiDocumentResultScreen extends StatelessWidget {
   }
 
   Widget _documents(MultiDocumentResultController c) {
+    // Read observables here (inside the screen's single Obx), not in itemBuilder.
+    final currentIndex = c.currentIndex.value;
+    final saving = c.saving.value;
+
     return Container(
-      height: Get.height * 0.115,
+      height: Sizes.hp(0.115),
       padding: const EdgeInsets.all(12),
       decoration: _card(),
-      child: Obx(
-        () => ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: c.images.length,
-          separatorBuilder: (_, _) => SizedBox(width: Get.width * 0.02),
-          itemBuilder: (_, index) {
-            final selected = index == c.currentIndex.value;
-            final saving = c.saving.value;
-            final thumbSize = Get.width * 0.15;
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: c.images.length,
+        separatorBuilder: (_, _) => SizedBox(width: Sizes.wp(0.02)),
+        itemBuilder: (_, index) {
+          final selected = index == currentIndex;
+          final thumbSize = Sizes.wp(0.15);
 
-            return GestureDetector(
-              onTap: saving ? null : () => c.goTo(index),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: thumbSize,
-                    height: thumbSize,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: selected ? _primary : const Color(0xFFEEEFF5),
-                        width: selected ? 2 : 1,
-                      ),
-                      boxShadow:
+          return GestureDetector(
+            onTap: saving ? null : () => c.goTo(index),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: thumbSize,
+                  height: thumbSize,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color:
                           selected
-                              ? [
-                                BoxShadow(
-                                  color: _primary.withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                              : null,
+                              ? ColorConstants.primary
+                              : ColorConstants.surfaceMuted,
+                      width: selected ? 2 : 1,
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(c.images[index], fit: BoxFit.cover),
-                    ),
-                  ),
-                  if (!saving)
-                    Positioned(
-                      top: -6,
-                      right: -6,
-                      child: GestureDetector(
-                        onTap: () => c.confirmRemoveImage(index),
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0473E),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                            boxShadow: const [
+                    boxShadow:
+                        selected
+                            ? [
                               BoxShadow(
-                                color: Color(0x33000000),
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
+                                color: ColorConstants.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
                               ),
-                            ],
+                            ]
+                            : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(c.images[index], fit: BoxFit.cover),
+                  ),
+                ),
+                if (!saving)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: GestureDetector(
+                      onTap: () => c.confirmRemoveImage(index),
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: ColorConstants.danger,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: ColorConstants.white,
+                            width: 1.5,
                           ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            size: 13,
-                            color: Colors.white,
-                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: ColorConstants.shadow20,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 13,
+                          color: ColorConstants.white,
                         ),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
-        ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _navigation(MultiDocumentResultController c) {
-    return Obx(() {
-      final saving = c.saving.value;
-      final isFirst = c.currentIndex.value == 0;
-      final isLast = c.currentIndex.value == c.images.length - 1;
+    final saving = c.saving.value;
+    final isFirst = c.currentIndex.value == 0;
+    final isLast = c.currentIndex.value == c.images.length - 1;
+    final canFinish = c.canFinish.value;
+    final currentHasText = c.currentHasText.value;
 
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Step indicator dots
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(c.images.length, (i) {
-              final active = i == c.currentIndex.value;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: active ? 20 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: active ? _primary : const Color(0xFFDBDCE8),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 14),
+    // Looks "ready" only when the action is allowed; still tappable to show the alert.
+    final ready = currentHasText && (!isLast || canFinish);
 
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: (saving || isFirst) ? 0.4 : 1,
-                    child: OutlinedButton.icon(
-                      onPressed: (saving || isFirst) ? null : c.previous,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: _textDark,
-                        disabledForegroundColor: _textDark,
-                        side: const BorderSide(color: Color(0xFFDBDCE8)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text(
-                        'Previous',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Step indicator dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(c.images.length, (i) {
+            final active = i == c.currentIndex.value;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: active ? ColorConstants.primary : ColorConstants.border2,
+                borderRadius: BorderRadius.circular(3),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: saving ? null : c.nextOrFinish,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _primary.withValues(alpha: 0.5),
-                      elevation: 0,
-                      shadowColor: _primary.withValues(alpha: 0.3),
+            );
+          }),
+        ),
+        const SizedBox(height: 14),
+
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: (saving || isFirst) ? 0.4 : 1,
+                  child: OutlinedButton.icon(
+                    onPressed: (saving || isFirst) ? null : c.previous,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ColorConstants.textDark2,
+                      disabledForegroundColor: ColorConstants.textDark2,
+                      side: const BorderSide(color: ColorConstants.border2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    icon:
-                        saving
-                            ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                            : Icon(
-                              isLast
-                                  ? Icons.check_rounded
-                                  : Icons.arrow_forward_rounded,
-                              size: 18,
-                            ),
-                    label: Text(
-                      saving ? 'Saving...' : (isLast ? 'Finish' : 'Next'),
-                      style: const TextStyle(
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text(
+                      'Previous',
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13.5,
                       ),
@@ -577,16 +763,77 @@ class MultiDocumentResultScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
-        ],
-      );
-    });
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: saving ? null : c.onActionTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        ready
+                            ? ColorConstants.primary
+                            : ColorConstants.gray500.withValues(alpha: 0.5),
+                    foregroundColor:
+                        ready
+                            ? ColorConstants.white
+                            : ColorConstants.white.withValues(alpha: 0.8),
+                    disabledBackgroundColor: ColorConstants.gray500.withValues(
+                      alpha: 0.5,
+                    ),
+                    disabledForegroundColor: ColorConstants.white.withValues(
+                      alpha: 0.8,
+                    ),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  icon:
+                      saving
+                          ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                ColorConstants.white,
+                              ),
+                            ),
+                          )
+                          : Icon(
+                            isLast
+                                ? Icons.check_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 19,
+                          ),
+                  label: Text(
+                    saving
+                        ? 'Saving...'
+                        : isLast
+                        ? 'Finish'
+                        : 'Next',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _textBox(MultiDocumentResultController c) {
+    final controller = c.controllers[c.currentIndex.value];
+
     return Container(
-      height: Get.height * 0.28,
+      height: Sizes.hp(0.28),
       padding: const EdgeInsets.all(16),
       decoration: _card(),
       child: Column(
@@ -598,12 +845,12 @@ class MultiDocumentResultScreen extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: _primary.withValues(alpha: 0.10),
+                  color: ColorConstants.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Icon(
                   Icons.text_snippet_rounded,
-                  color: _primary,
+                  color: ColorConstants.primary,
                   size: 17,
                 ),
               ),
@@ -612,7 +859,7 @@ class MultiDocumentResultScreen extends StatelessWidget {
                 'Extracted Text',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: _textDark,
+                  color: ColorConstants.textDark2,
                   fontSize: 14.5,
                 ),
               ),
@@ -620,38 +867,38 @@ class MultiDocumentResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: Obx(() {
-              final controller = c.controllers[c.currentIndex.value];
-              return TextField(
-                key: ObjectKey(controller),
-                controller: controller,
-                enabled: !c.saving.value,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: _textDark,
-                  height: 1.4,
+            child: TextField(
+              key: ObjectKey(controller),
+              controller: controller,
+              enabled: !c.saving.value,
+              expands: true,
+              maxLines: null,
+              minLines: null,
+              textAlignVertical: TextAlignVertical.top,
+              style: const TextStyle(
+                fontSize: 13.5,
+                color: ColorConstants.textDark2,
+                height: 1.4,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Extracted text',
+                hintStyle: const TextStyle(color: ColorConstants.textMuted2),
+                filled: true,
+                fillColor: ColorConstants.surfaceAlt,
+                contentPadding: const EdgeInsets.all(14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Extracted text',
-                  hintStyle: const TextStyle(color: _textMuted),
-                  filled: true,
-                  fillColor: const Color(0xFFF8F9FC),
-                  contentPadding: const EdgeInsets.all(14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _primary, width: 1.4),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: ColorConstants.primary,
+                    width: 1.4,
                   ),
                 ),
-              );
-            }),
+              ),
+            ),
           ),
         ],
       ),
@@ -660,12 +907,12 @@ class MultiDocumentResultScreen extends StatelessWidget {
 
   BoxDecoration _card() {
     return BoxDecoration(
-      color: Colors.white,
+      color: ColorConstants.white,
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0xFFEEEFF5)),
+      border: Border.all(color: ColorConstants.surfaceMuted),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: .04),
+          color: ColorConstants.black.withValues(alpha: .04),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
