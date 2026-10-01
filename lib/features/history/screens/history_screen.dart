@@ -1,4 +1,5 @@
 import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/helpers.dart';
 import 'package:quick_scanner/routes_list.dart';
 import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
@@ -799,26 +800,6 @@ class _InvoiceCard extends StatelessWidget {
     required this.onEdit,
   });
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  String _fmt(DateTime d) {
-    final l = d.toLocal();
-    return '${l.day} ${_months[l.month - 1]} ${l.year}';
-  }
-
   String _dash(String? v) => (v == null || v.trim().isEmpty) ? '—' : v;
 
   // Works whether ocrStatus is an enum or a String
@@ -1019,7 +1000,7 @@ class _InvoiceCard extends StatelessWidget {
           _info(
             Icons.cloud_upload_outlined,
             'Uploaded',
-            _fmt(invoice.uploadedAt),
+            formatUploaded(invoice.uploadedAt),
           ),
         ],
       ),

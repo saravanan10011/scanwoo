@@ -42,3 +42,39 @@ String recordTitle(ScanRecord record) {
 String invoiceCode(int index) {
   return 'INV-${index + 1000}';
 }
+
+const String kCurrency = '\u00A3';
+
+/// 1234.5 -> £1,234.50
+String formatMoney(num value) {
+  final neg = value < 0;
+  final parts = value.abs().toStringAsFixed(2).split('.');
+  final whole = parts[0].replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (m) => ',',
+  );
+  return '${neg ? '-' : ''}$kCurrency$whole.${parts[1]}';
+}
+
+DateTime parseServerTime(dynamic raw) {
+  final str = (raw ?? '').toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  var iso =
+      str.contains(' ') && !str.contains('T')
+          ? str.replaceFirst(' ', 'T')
+          : str;
+  final hasZone =
+      iso.endsWith('Z') ||
+      RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(iso.split('T').last);
+  if (!hasZone) iso = '${iso}Z';
+  return (DateTime.tryParse(iso) ?? DateTime.now()).toLocal();
+}
+
+/// 01 Oct 2026 · 3:45 PM  (local time)
+String formatUploaded(DateTime date) {
+  final l = date.toLocal();
+  final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
+  final m = l.minute.toString().padLeft(2, '0');
+  final ap = l.hour >= 12 ? 'PM' : 'AM';
+  return '${formatShortDate(l)} · $h:$m $ap';
+}

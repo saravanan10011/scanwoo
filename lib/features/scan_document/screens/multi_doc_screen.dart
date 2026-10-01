@@ -1,3 +1,4 @@
+import 'package:quick_scanner/services/invoice_exterst.dart';
 import 'package:quick_scanner/features/scan_document/screens/scanner_screen.dart';
 import 'package:quick_scanner/utils/common_color.dart';
 import 'package:quick_scanner/routes_list.dart';
@@ -401,6 +402,7 @@ class MultiDocumentResultController extends GetxController {
 
       final batchImages = <File>[];
       final batchTexts = <String>[];
+      final batchFields = <Map<String, dynamic>>[];
 
       for (int i = 0; i < images.length; i++) {
         final text = controllers[i].text.trim();
@@ -408,6 +410,7 @@ class MultiDocumentResultController extends GetxController {
 
         batchImages.add(images[i]);
         batchTexts.add(text);
+        batchFields.add(InvoiceExtractionService.extract(text));
       }
 
       debugPrint('Uploading with token: ${tokenDataService.accessToken}');
@@ -417,6 +420,7 @@ class MultiDocumentResultController extends GetxController {
             token: tokenDataService.accessToken,
             images: batchImages,
             extractedDataList: batchTexts,
+            fieldsList: batchFields,
           );
         } catch (e) {
           debugPrint('Individual uploads failed: $e');
@@ -736,34 +740,36 @@ class MultiDocumentResultScreen extends StatelessWidget {
 
         Row(
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: (saving || isFirst) ? 0.4 : 1,
-                  child: OutlinedButton.icon(
-                    onPressed: (saving || isFirst) ? null : c.previous,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ColorConstants.textDark2,
-                      disabledForegroundColor: ColorConstants.textDark2,
-                      side: const BorderSide(color: ColorConstants.border2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text(
-                      'Previous',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
+            (saving || isFirst)
+                ? SizedBox()
+                : Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 150),
+                      opacity: (saving || isFirst) ? 0.4 : 1,
+                      child: OutlinedButton.icon(
+                        onPressed: (saving || isFirst) ? null : c.previous,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ColorConstants.textDark2,
+                          disabledForegroundColor: ColorConstants.textDark2,
+                          side: const BorderSide(color: ColorConstants.border2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text(
+                          'Previous',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
             const SizedBox(width: 12),
             Expanded(
               child: SizedBox(

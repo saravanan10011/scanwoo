@@ -248,16 +248,29 @@ class ScannerScreenController extends GetxController {
         arguments: {
           'imagePaths': images.map((file) => file.path).toList(),
           'onProcess': (List<String> paths) async {
-            final results = <String>[];
+            final results = List<String>.filled(paths.length, '');
+            final dataList = List<Map<String, dynamic>>.filled(
+              paths.length,
+              <String, dynamic>{},
+            );
 
-            for (final path in paths) {
-              final text = await ocrService.extractText(File(path));
-              final data = InvoiceExtractionService.extract(text);
-
-              results.add(text);
-              extractedDataList.add(data);
+            // OCR up to 3 pages at once (order is preserved by index).
+            const batch = 3;
+            for (var i = 0; i < paths.length; i += batch) {
+              final end = i + batch > paths.length ? paths.length : i + batch;
+              await Future.wait([
+                for (var j = i; j < end; j++)
+                  () async {
+                    final text = await ocrService.extractText(File(paths[j]));
+                    results[j] = text;
+                    dataList[j] = InvoiceExtractionService.extract(text);
+                  }(),
+              ]);
             }
 
+            extractedDataList
+              ..clear()
+              ..addAll(dataList);
             return results;
           },
         },

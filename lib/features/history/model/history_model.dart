@@ -4,6 +4,7 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:convert';
+import 'package:quick_scanner/utils/helpers.dart';
 
 InvoiceList invoiceListFromJson(String str) =>
     InvoiceList.fromJson(json.decode(str));
@@ -90,6 +91,8 @@ class InvoiceData {
   OcrStatus ocrStatus;
   Status status;
   DateTime uploadedAt;
+  String uploadedAtIso;
+  String uploadedAtDisplay;
   Fields fields;
   List<Image> images;
   int imagesUnviewedCount;
@@ -111,32 +114,54 @@ class InvoiceData {
     required this.ocrStatus,
     required this.status,
     required this.uploadedAt,
+    required this.uploadedAtIso,
+    required this.uploadedAtDisplay,
     required this.fields,
     required this.images,
     required this.imagesUnviewedCount,
   });
 
-  factory InvoiceData.fromJson(Map<String, dynamic> json) => InvoiceData(
-    id: _i(json["id"]),
-    supplier: _s(json["supplier"]),
-    vatNumber: _s(json["vat_number"]),
-    invoiceNo: _s(json["invoice_no"]),
-    branch: _s(json["branch"]),
-    date: json["date"],
-    net: _d(json["net"]),
-    vat: _dn(json["vat"]),
-    gross: _d(json["gross"]),
-    sr: json["sr"],
-    zr: json["zr"],
-    exempt: json["exempt"],
-    payment: paymentValues.map[json["payment"]] ?? Payment.EMPTY,
-    ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
-    status: statusValues.map[json["status"]] ?? Status.UNKNOWN,
-    uploadedAt: DateTime.tryParse(_s(json["uploaded_at"])) ?? DateTime.now(),
-    fields: Fields.fromJson(_map(json["fields"])),
-    images: _list(json["images"]).map((x) => Image.fromJson(_map(x))).toList(),
-    imagesUnviewedCount: _i(json["images_unviewed_count"]),
-  );
+  factory InvoiceData.fromJson(Map<String, dynamic> json) {
+    final images =
+        _list(json["images"]).map((x) => Image.fromJson(_map(x))).toList();
+
+    // New API no longer sends a top-level "fields" object; the OCR text is
+    // inside images[].extracted_data. Fall back to the first image's text.
+    final Fields fields =
+        json["fields"] is Map && (json["fields"] as Map).isNotEmpty
+            ? Fields.fromJson(_map(json["fields"]))
+            : Fields(
+              rawText:
+                  images.isNotEmpty ? images.first.extractedData.rawText : null,
+              items: const [],
+            );
+
+    return InvoiceData(
+      id: _i(json["id"]),
+      supplier: _s(json["supplier"]),
+      vatNumber: _s(json["vat_number"]),
+      invoiceNo: _s(json["invoice_no"]),
+      branch: _s(json["branch"]),
+      date: json["date"],
+      net: _d(json["net"]),
+      vat: _dn(json["vat"]),
+      gross: _d(json["gross"]),
+      sr: json["sr"],
+      zr: json["zr"],
+      exempt: json["exempt"],
+      payment: paymentValues.map[json["payment"]] ?? Payment.EMPTY,
+      ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
+      status: statusValues.map[json["status"]] ?? Status.UNKNOWN,
+      uploadedAt: parseServerTime(
+        json["uploaded_at_iso"] ?? json["uploaded_at"],
+      ),
+      uploadedAtIso: _s(json["uploaded_at_iso"]),
+      uploadedAtDisplay: _s(json["uploaded_at_display"]),
+      fields: fields,
+      images: images,
+      imagesUnviewedCount: _i(json["images_unviewed_count"]),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     "id": id,
@@ -154,7 +179,9 @@ class InvoiceData {
     "payment": paymentValues.reverse[payment],
     "ocr_status": ocrStatusValues.reverse[ocrStatus],
     "status": statusValues.reverse[status],
-    "uploaded_at": uploadedAt.toIso8601String(),
+    "uploaded_at": uploadedAt.toUtc().toIso8601String(),
+    "uploaded_at_iso": uploadedAtIso,
+    "uploaded_at_display": uploadedAtDisplay,
     "fields": fields.toJson(),
     "images": images.map((x) => x.toJson()).toList(),
     "images_unviewed_count": imagesUnviewedCount,
@@ -340,11 +367,12 @@ class ParsedHeader {
 
 // ───────────────────────────── Enums (safe) ─────────────────────────────
 
-enum Payment { CARD, CASH, EMPTY }
+enum Payment { CARD, CASH, CREDIT, EMPTY }
 
 final paymentValues = EnumValues({
   "Card": Payment.CARD,
   "Cash": Payment.CASH,
+  "Credit": Payment.CREDIT,
   "—": Payment.EMPTY,
 });
 

@@ -333,80 +333,87 @@ class LoginScreenState extends State<LoginScreen> {
                             SizedBox(
                               width: double.infinity,
                               height: 52,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  gradient: LinearGradient(
-                                    colors:
-                                        _loginController.isLoading.value
-                                            ? [
-                                              primary.withValues(alpha: 0.6),
-                                              primaryDark.withValues(
-                                                alpha: 0.6,
-                                              ),
-                                            ]
-                                            : const [primary, primaryDark],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  boxShadow:
-                                      _loginController.isLoading.value
-                                          ? null
-                                          : [
-                                            BoxShadow(
-                                              color: primary.withValues(
-                                                alpha: 0.32,
-                                              ),
-                                              blurRadius: 18,
-                                              offset: const Offset(0, 8),
-                                            ),
-                                          ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    FocusManager.instance.primaryFocus
-                                        ?.unfocus();
-                                    if (_loginkey.currentState!.validate()) {
-                                      _loginController.clientLogin();
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: ColorConstants.transparent,
-                                    foregroundColor: ColorConstants.white,
-                                    shadowColor: ColorConstants.transparent,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  child:
-                                      _loginController.isLoading.value
-                                          ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: ColorConstants.white,
-                                            ),
-                                          )
-                                          : Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: const [
-                                              Text(
-                                                'Login',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w700,
+                              child: Obx(
+                                () => DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    gradient: LinearGradient(
+                                      colors:
+                                          _loginController.isLoading.value
+                                              ? [
+                                                primary.withValues(alpha: 0.6),
+                                                primaryDark.withValues(
+                                                  alpha: 0.6,
                                                 ),
+                                              ]
+                                              : const [primary, primaryDark],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),
+                                    boxShadow:
+                                        _loginController.isLoading.value
+                                            ? null
+                                            : [
+                                              BoxShadow(
+                                                color: primary.withValues(
+                                                  alpha: 0.32,
+                                                ),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 8),
                                               ),
-                                              SizedBox(width: 8),
-                                              // Icon(
-                                              //   Icons.arrow_forward_rounded,
-                                              //   size: 18,
-                                              // ),
                                             ],
-                                          ),
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed:
+                                        _loginController.isLoading.value
+                                            ? null
+                                            : () {
+                                              FocusManager.instance.primaryFocus
+                                                  ?.unfocus();
+
+                                              if (_loginkey.currentState!
+                                                  .validate()) {
+                                                _loginController.clientLogin();
+                                              }
+                                            },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          ColorConstants.transparent,
+                                      disabledBackgroundColor:
+                                          ColorConstants.transparent,
+                                      foregroundColor: ColorConstants.white,
+                                      disabledForegroundColor:
+                                          ColorConstants.white,
+                                      shadowColor: ColorConstants.transparent,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    child:
+                                        _loginController.isLoading.value
+                                            ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: ColorConstants.white,
+                                              ),
+                                            )
+                                            : const Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  'Login',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                  ),
                                 ),
                               ),
                             ),

@@ -247,22 +247,18 @@ class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
-      leading: Material(
-        color: ColorConstants.white.withValues(alpha: 0.18),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: () {
-            Get.back();
-          },
-          child: SizedBox(
-            width: sw(40),
-            height: sw(40),
-            child: Icon(
-              Icons.arrow_back_ios,
-              size: sp(17),
-              color: ColorConstants.white,
-            ),
+      leading: InkWell(
+        // customBorder: const CircleBorder(),
+        onTap: () {
+          Get.back();
+        },
+        child: SizedBox(
+          width: sw(40),
+          height: sw(40),
+          child: Icon(
+            Icons.arrow_back_ios,
+            size: sp(17),
+            color: ColorConstants.white,
           ),
         ),
       ),

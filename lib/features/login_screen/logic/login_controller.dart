@@ -70,6 +70,8 @@ class LoginController extends GetxController {
 
         await Get.offAllNamed(RouteList.mainscreen);
       } else if (result is FailureStatus) {
+        isLoading.value = false;
+
         final data = jsonDecode(result.message);
         final message = data['message'];
         await Get.dialog(

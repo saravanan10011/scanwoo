@@ -3,8 +3,6 @@ import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// Same 375x812 baseline scaling used across the app's other screens.
-
 class ProcessingController extends GetxController {
   final List<String> imagePaths;
   final Future<List<String>> Function(List<String> paths) onProcess;
@@ -28,14 +26,15 @@ class ProcessingController extends GetxController {
       final texts = await onProcess(imagePaths);
 
       if (isClosed) return;
-      progress.value = 1.0;
       finished.value = true;
+      progress.value = 1.0;
 
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(const Duration(milliseconds: 80));
       if (isClosed) return;
       Get.back(result: texts);
     } catch (e) {
       if (isClosed) return;
+      finished.value = true;
       Get.snackbar(
         'Processing failed',
         'Processing failed: $e',
@@ -45,17 +44,15 @@ class ProcessingController extends GetxController {
     }
   }
 
+  // Ease-out: moves quickly at first, then slows down, never passes 95%
+  // until the OCR actually finishes.
   void animateProgress() {
     Future.doWhile(() async {
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 100));
       if (isClosed || finished.value) return false;
 
-      if (progress.value < 0.9) {
-        progress.value += 0.002;
-      } else if (progress.value < 0.98) {
-        progress.value += 0.001;
-      }
-      return progress.value < 0.98 && !finished.value;
+      progress.value += (0.95 - progress.value) * 0.1;
+      return true;
     });
   }
 }
@@ -76,8 +73,7 @@ class ProcessingScreen extends StatelessWidget {
       ProcessingController(imagePaths: imagePaths, onProcess: onProcess),
     );
 
-    return Obx(
-      () => Scaffold(
+    return Scaffold(
       backgroundColor: ColorConstants.primary,
       body: SafeArea(
         child: Center(
@@ -103,20 +99,28 @@ class ProcessingScreen extends StatelessWidget {
                 SizedBox(height: Sizes.h(12)),
                 Text(
                   'Extracting text using OCR',
-                  style: TextStyle(color: ColorConstants.white70, fontSize: Sizes.sp(14)),
+                  style: TextStyle(
+                    color: ColorConstants.white70,
+                    fontSize: Sizes.sp(14),
+                  ),
                 ),
                 SizedBox(height: Sizes.h(40)),
-                ClipRRect(
+                Obx(
+                  () => ClipRRect(
                     borderRadius: BorderRadius.circular(Sizes.w(10)),
                     child: LinearProgressIndicator(
                       value: c.progress.value,
                       minHeight: Sizes.h(8),
                       backgroundColor: ColorConstants.white24,
-                      valueColor: const AlwaysStoppedAnimation(ColorConstants.white),
+                      valueColor: const AlwaysStoppedAnimation(
+                        ColorConstants.white,
+                      ),
                     ),
                   ),
+                ),
                 SizedBox(height: Sizes.h(18)),
-                Text(
+                Obx(
+                  () => Text(
                     '${c.percent}%',
                     style: TextStyle(
                       color: ColorConstants.white,
@@ -124,12 +128,12 @@ class ProcessingScreen extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                ),
               ],
             ),
           ),
         ),
       ),
-    ),
     );
   }
 }

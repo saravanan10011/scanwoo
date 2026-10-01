@@ -23,20 +23,17 @@ class Dashboard {
 class Data {
   Client client;
   Stats stats;
-  VatSummary vatSummary;
 
-  Data({required this.client, required this.stats, required this.vatSummary});
+  Data({required this.client, required this.stats});
 
   factory Data.fromJson(Map<String, dynamic> json) => Data(
     client: Client.fromJson(json["client"]),
     stats: Stats.fromJson(json["stats"]),
-    vatSummary: VatSummary.fromJson(json["vat_summary"]),
   );
 
   Map<String, dynamic> toJson() => {
     "client": client.toJson(),
     "stats": stats.toJson(),
-    "vat_summary": vatSummary.toJson(),
   };
 }
 
@@ -55,48 +52,32 @@ class Client {
 
 class Stats {
   int invoicesThisMonth;
-  int pending;
-  int vatThisQuarter;
+  int invoicesLastMonth;
   int invoicesChange;
+  int uploadedInvoices;
+  int uploadedTotal;
 
   Stats({
     required this.invoicesThisMonth,
-    required this.pending,
-    required this.vatThisQuarter,
+    required this.invoicesLastMonth,
     required this.invoicesChange,
+    required this.uploadedInvoices,
+    required this.uploadedTotal,
   });
 
   factory Stats.fromJson(Map<String, dynamic> json) => Stats(
-    invoicesThisMonth: json["invoices_this_month"],
-    pending: json["pending"],
-    vatThisQuarter: json["vat_this_quarter"],
-    invoicesChange: json["invoices_change"],
+    invoicesThisMonth: (json["invoices_this_month"] as num).toInt(),
+    invoicesLastMonth: (json["invoices_last_month"] as num).toInt(),
+    invoicesChange: (json["invoices_change"] as num).toInt(),
+    uploadedInvoices: (json["uploaded_invoices"] as num).toInt(),
+    uploadedTotal: (json["uploaded_total"] as num).toInt(),
   );
 
   Map<String, dynamic> toJson() => {
     "invoices_this_month": invoicesThisMonth,
-    "pending": pending,
-    "vat_this_quarter": vatThisQuarter,
+    "invoices_last_month": invoicesLastMonth,
     "invoices_change": invoicesChange,
-  };
-}
-
-class VatSummary {
-  int box4;
-  int box7;
-  String period;
-
-  VatSummary({required this.box4, required this.box7, required this.period});
-
-  factory VatSummary.fromJson(Map<String, dynamic> json) => VatSummary(
-    box4: json["box4"],
-    box7: json["box7"],
-    period: json["period"],
-  );
-
-  Map<String, dynamic> toJson() => {
-    "box4": box4,
-    "box7": box7,
-    "period": period,
+    "uploaded_invoices": uploadedInvoices,
+    "uploaded_total": uploadedTotal,
   };
 }

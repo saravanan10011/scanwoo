@@ -1,4 +1,5 @@
 import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/helpers.dart';
 import 'package:quick_scanner/utils/common_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -215,7 +216,7 @@ class InvoiceViewDialog extends StatelessWidget {
                 ),
                 SizedBox(height: Sizes.h(2)),
                 Text(
-                  'Uploaded ${_fmt(invoice.uploadedAt)}',
+                  'Uploaded ${formatUploaded(invoice.uploadedAt)}',
                   style: TextStyle(
                     fontSize: Sizes.sp(12),
                     color: ColorConstants.textMuted,
@@ -303,7 +304,7 @@ class InvoiceViewDialog extends StatelessWidget {
           ),
           SizedBox(height: Sizes.h(6)),
           Text(
-            invoice.gross.toStringAsFixed(2),
+            "${invoice.gross}",
             style: TextStyle(
               fontSize: Sizes.sp(28),
               fontWeight: FontWeight.w800,

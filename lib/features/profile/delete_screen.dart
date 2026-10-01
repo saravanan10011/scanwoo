@@ -31,6 +31,8 @@ class DeleteAccountController extends GetxController {
       if (isClosed) return;
 
       if (result is SuccessStatus) {
+        loading.value = false;
+
         // Close the dialog first, then notify and log out.
         Get.back(result: true);
         Get.snackbar(

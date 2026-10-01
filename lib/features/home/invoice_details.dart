@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quick_scanner/utils/helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/routes_list.dart';
@@ -130,6 +131,83 @@ class InvoiceDetailScreen extends StatelessWidget {
   }
 
   // ───────────────────────── Header ─────────────────────────
+  /// Upload moment in the device's local time (from uploaded_at_iso).
+  DateTime? get _uploadedLocal {
+    final iso = invoice.uploadedAtIso.trim();
+    if (iso.isEmpty) return null;
+    return DateTime.tryParse(iso)?.toLocal();
+  }
+
+  String get _uploadedDate {
+    final d = _uploadedLocal;
+    if (d != null) return _fmtDate(d);
+    return _fmtDate(invoice.uploadedAt);
+  }
+
+  String get _uploadedTime {
+    final d = _uploadedLocal;
+    return d != null ? _fmtTime(d) : '';
+  }
+
+  Widget _stat(IconData icon, String label, String value, {String sub = ''}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _sw(8)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: _sp(12), color: ColorConstants.textMuted),
+              SizedBox(width: _sw(4)),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: _sp(11),
+                    color: ColorConstants.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: _sh(6)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: _sp(13.5),
+                color: ColorConstants.textDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          if (sub.isNotEmpty) ...[
+            SizedBox(height: _sh(2)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                sub,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: _sp(11),
+                  color: ColorConstants.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _header(
     BuildContext context,
@@ -275,7 +353,8 @@ class InvoiceDetailScreen extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          invoice.gross.toStringAsFixed(2),
+                          "${invoice.gross}",
+
                           style: TextStyle(
                             color: ColorConstants.white,
                             fontSize: _sp(30),
@@ -373,7 +452,8 @@ class InvoiceDetailScreen extends StatelessWidget {
             child: _stat(
               Icons.calendar_today_rounded,
               'Uploaded',
-              _fmtDate(invoice.uploadedAt),
+              _uploadedDate,
+              sub: _uploadedTime,
             ),
           ),
           _vDivider(),
@@ -395,51 +475,6 @@ class InvoiceDetailScreen extends StatelessWidget {
     height: _sh(36),
     color: ColorConstants.divider.withValues(alpha: 0.7),
   );
-
-  Widget _stat(IconData icon, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: _sw(8)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: _sp(12), color: ColorConstants.textMuted),
-              SizedBox(width: _sw(4)),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: _sp(11),
-                    color: ColorConstants.textMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: _sh(6)),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: _sp(13.5),
-                color: ColorConstants.textDark,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ───────────────────────── Details ─────────────────────────
 
@@ -498,15 +533,13 @@ class InvoiceDetailScreen extends StatelessWidget {
             // copyable: invoice.invoiceNo.toString().trim().isNotEmpty,
           ),
           _divider(),
-          _row(
-            Icons.payments_outlined,
-            'Gross total',
-            invoice.gross.toStringAsFixed(2),
-          ),
+          _row(Icons.payments_outlined, 'Gross total', "${invoice.gross}"),
           _divider(),
           _row(
             Icons.cloud_upload_outlined,
             'Uploaded',
+
+            // _fmtDate(invoice.uploadedAt),
             '${_fmtDate(invoice.uploadedAt)} · ${_fmtTime(invoice.uploadedAt)}',
           ),
         ],

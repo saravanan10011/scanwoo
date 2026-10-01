@@ -1,14 +1,5 @@
 library;
 
-/// Extracts structured invoice data from raw OCR text.
-/// Public API unchanged: `InvoiceExtractionService.extract(ocrText)`.
-///
-/// Tuned for UK supplier invoices with very different layouts, e.g.
-///  - "Magna Foodservice": `#IN0511167` with no "Invoice No" label,
-///    "TOTAL AMOUNT (EXC. VAT) / VAT / TOTAL AMOUNT (INC. VAT)" block
-///  - "Alpha Food Company": "Invoice No." + "Subtotal / VAT Total /
-///    Today's Total / Customer Total Balance" block (balance is NOT the total)
-///  - "Universal Express": "Sub Total / Total V.A.T. / TOTAL" box
 class InvoiceExtractionService {
   // ---------------------------------------------------------------------
   // Label lists (priority order)
@@ -102,6 +93,17 @@ class InvoiceExtractionService {
       gross = _inferGross(allAmounts);
     }
 
+    // UK VAT is at most 20%. If the VAT we found is bigger than that, it was
+    // read from the wrong place (e.g. a line-item amount). Net and gross are
+    // reliable here, so derive VAT from them instead.
+    if (net != null && gross != null && vat != null) {
+      final maxVat = net * 0.21 + 0.02;
+      final diff = _r2(gross - net);
+      if (vat > maxVat && diff >= 0 && diff <= maxVat) {
+        vat = diff;
+      }
+    }
+
     // Cross-check the three amounts against each other.
     if (net != null && vat != null) {
       final sum = _r2(net + vat);
@@ -146,9 +148,14 @@ class InvoiceExtractionService {
         .replaceAll('\u00A0', ' ')
         .replaceAll('\t', ' ');
     t = t.replaceAll(RegExp(r' {2,}'), ' ');
-    t = t.replaceAll(RegExp(r'\blnvoice\b'), 'Invoice');
+    t = t.replaceAll(RegExp(r'\b[l1]nvoice\b'), 'Invoice');
     t = t.replaceAll(RegExp(r'\bT[0O]TAL\b'), 'TOTAL');
     t = t.replaceAll(RegExp(r'\bV[4A]T\b'), 'VAT');
+    t = t.replaceAll(RegExp(r'\bUmited\b'), 'Limited'); // "Magna ... Umited"
+    t = t.replaceAll(
+      RegExp(r'\bDel{1,2}[il1]?very\b', caseSensitive: false),
+      'Delivery',
+    ); // Dellvery / Delvery
     return t;
   }
 
@@ -169,9 +176,10 @@ class InvoiceExtractionService {
     if (lines.isEmpty) return null;
 
     // Only look above the customer / delivery block so we never return the
-    // customer's name (e.g. "VENPA Trading Ltd").
+    // customer's name (e.g. "VENPA Trading Ltd"). "Ship Te" is OCR for
+    // "Ship To".
     final blockStart = RegExp(
-      r'^\W*(Invoice|B[il1]{1,3}|Deliver(?:y)?|Ship|Sold)\s*(To|Address)\b',
+      r'^\W*(Invoice|B[il1]{1,3}|Deliver(?:y)?|Ship|Sold)\s*(To|Te|Address)\b',
       caseSensitive: false,
     );
     var limit = lines.length < 25 ? lines.length : 25;
@@ -372,7 +380,7 @@ class InvoiceExtractionService {
       if (otherNumberLine.hasMatch(line)) continue;
       final m = RegExp(r'#\s*([A-Za-z0-9\-\/]{4,15})').firstMatch(line);
       if (m != null && RegExp(r'\d').hasMatch(m.group(1)!)) {
-        return m.group(1)!.replaceFirst(RegExp(r'^[1lI]N(?=\d)'), 'IN');
+        return _fixRefPrefix(m.group(1)!);
       }
     }
 
@@ -384,6 +392,13 @@ class InvoiceExtractionService {
       return line;
     }
     return null;
+  }
+
+  /// "#INO511167" (letter O read for zero) -> "IN0511167".
+  static String _fixRefPrefix(String ref) {
+    final m = RegExp(r'^[1lI]N([0-9OoIlSs]{5,})$').firstMatch(ref);
+    if (m != null) return 'IN${_cleanNumericOcr(m.group(1)!)}';
+    return ref.replaceFirst(RegExp(r'^[1lI]N(?=\d)'), 'IN');
   }
 
   // ---------------------------------------------------------------------
@@ -433,6 +448,34 @@ class InvoiceExtractionService {
       }
 
       if (!bad(value)) return value;
+    }
+
+    return _extractCustomerFromShipTo(lines);
+  }
+
+  /// Magna-style layout: a "Ship To | Delivery Date | ..." header row, then a
+  /// row starting with the customer code (V144), then the customer name,
+  /// optionally "X Ltd T/A" followed by the trading name.
+  static String? _extractCustomerFromShipTo(List<String> lines) {
+    final header = RegExp(r'\bShip\s*T[oe0]\b', caseSensitive: false);
+    final codeLike = RegExp(r'^[A-Za-z]?\d{2,8}$');
+    final skipNext = RegExp(r'^(United|Phone|Tel)', caseSensitive: false);
+
+    for (var i = 0; i < lines.length; i++) {
+      if (!header.hasMatch(lines[i])) continue;
+
+      for (var k = i + 1; k <= i + 4 && k < lines.length; k++) {
+        final first = lines[k].split('|').first.trim();
+        if (first.isEmpty || codeLike.hasMatch(first)) continue;
+        if (!RegExp(r'[A-Za-z]{3,}').hasMatch(first)) continue;
+
+        if (RegExp(r'\bT\/A\b', caseSensitive: false).hasMatch(first) &&
+            k + 1 < lines.length) {
+          final next = lines[k + 1].split('|').first.trim();
+          if (next.length > 2 && !skipNext.hasMatch(next)) return next;
+        }
+        return first;
+      }
     }
     return null;
   }
@@ -508,6 +551,12 @@ class InvoiceExtractionService {
       r'V\.?A\.?T\.?\s*(?:Reg|No|Number|#)',
       caseSensitive: false,
     );
+    // Column-header rows such as "ITEM No. DESCRIPTION | UNIT PRICE | VAT RATE"
+    // must never be read as the VAT amount line.
+    final vatHeaderLine = RegExp(
+      r'vat\s*rate|unit\s*price|description|\bqty\b|item\s*no',
+      caseSensitive: false,
+    );
     // "(EXC. VAT)" / "INC VAT" must never be read as the VAT amount line.
     final vatBadPrefix = RegExp(
       r'(exc|excl|excluding|ex|inc|incl|including)[.,]?\s*\(?\s*$',
@@ -543,6 +592,7 @@ class InvoiceExtractionService {
 
         if (isVat) {
           if (vatIdLine.hasMatch(line)) continue;
+          if (vatHeaderLine.hasMatch(line)) continue;
           if (vatBadPrefix.hasMatch(before)) continue;
         }
         if (strictTotal) {
@@ -714,8 +764,27 @@ class InvoiceExtractionService {
       if (!looksLikeHeading && value.isNotEmpty) return value;
     }
 
+    // OCR-damaged "Payment Terms | Cash on Delivery-C" ("Paynent Ters").
+    final pay = RegExp(
+      r'\bPay\w{0,8}\s+Ter\w{0,2}\s*[:|]\s*([^\n|]+)',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (pay != null) {
+      final v =
+          pay
+              .group(1)!
+              .trim()
+              .replaceFirst(RegExp(r'[\s\-]+[A-Za-z]$'), '')
+              .trim();
+      if (v.isNotEmpty) return v;
+    }
+
     if (RegExp(r'due on receipt', caseSensitive: false).hasMatch(text)) {
       return 'Due on receipt';
+    }
+
+    if (RegExp(r'cash\s*on\s*delivery', caseSensitive: false).hasMatch(text)) {
+      return 'Cash on Delivery';
     }
 
     final within = RegExp(

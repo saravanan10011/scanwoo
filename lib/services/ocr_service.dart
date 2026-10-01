@@ -1,17 +1,9 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 
-/// Needs the `image` package:  flutter pub add image
-///
-/// Runs ML Kit twice (original photo + an enhanced copy: upscaled, grayscale,
-/// contrast-normalised) and keeps whichever result has more useful text.
-/// Rows are rebuilt from bounding boxes, with page tilt compensated so the
-/// label/value columns of a photographed invoice stay on the same row.
 class OcrService {
   final TextRecognizer textRecognizer = TextRecognizer(
     script: TextRecognitionScript.latin,
@@ -19,12 +11,24 @@ class OcrService {
 
   Future<String> extractText(File imageFile) async {
     try {
+      // Start the (slow) image enhancement in a background isolate right
+      // away so it runs while the first OCR pass is working.
+      final enhancedFuture = compute(_enhanceImage, imageFile.path);
+
       final original = await _recognize(imageFile);
+
+      // Fast path: the first pass already looks like a good invoice read,
+      // so skip the second OCR pass entirely.
+      if (_isGood(original)) {
+        enhancedFuture.ignore();
+        debugPrint('OCR fast path (original is good enough)');
+        return original;
+      }
 
       var enhanced = '';
       File? tmp;
       try {
-        final bytes = await compute(_enhanceImage, imageFile.path);
+        final bytes = await enhancedFuture;
         tmp = File(
           '${Directory.systemTemp.path}/ocr_${DateTime.now().microsecondsSinceEpoch}.jpg',
         );
@@ -50,6 +54,19 @@ class OcrService {
     } catch (e) {
       throw Exception('Failed to extract text: $e');
     }
+  }
+
+  /// True when the text already contains enough invoice keywords/characters
+  /// that a second (enhanced) OCR pass is unlikely to improve it.
+  bool _isGood(String text) {
+    if (text.isEmpty) return false;
+    final alnum = RegExp(r'[A-Za-z0-9]').allMatches(text).length;
+    final keywords =
+        RegExp(
+          r'invoice|total|vat|date|amount|subtotal|balance',
+          caseSensitive: false,
+        ).allMatches(text).length;
+    return alnum >= 200 && keywords >= 3;
   }
 
   /// Higher = more useful text (letters/digits plus invoice keywords).
@@ -225,7 +242,7 @@ Uint8List _enhanceImage(String path) {
 
   // Small text needs enough pixels: bring the long side to ~2600px.
   final longSide = math.max(image.width, image.height);
-  const target = 2600;
+  const target = 2200;
   if (longSide < target) {
     final scale = target / longSide;
     image = img.copyResize(
@@ -248,7 +265,7 @@ Uint8List _enhanceImage(String path) {
   image = img.normalize(image, min: 0, max: 255);
   image = img.adjustColor(image, contrast: 1.25);
 
-  return Uint8List.fromList(img.encodeJpg(image, quality: 92));
+  return Uint8List.fromList(img.encodeJpg(image, quality: 88));
 }
 
 class _RawLine {

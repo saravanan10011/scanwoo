@@ -248,7 +248,10 @@ class ProfileScreenState extends State<ProfileScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  _profileController.userName.value,
+                  _profileController.userName.value.isNotEmpty
+                      ? '${_profileController.userName.value[0].toUpperCase()}'
+                          '${_profileController.userName.value.substring(1)}'
+                      : '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -348,8 +351,13 @@ class ProfileScreenState extends State<ProfileScreen> {
         children: [
           infoTile(
             icon: Icons.badge_outlined,
+
             label: 'Full Name',
-            value: _profileController.userName.value,
+            value:
+                _profileController.userName.value.isNotEmpty
+                    ? '${_profileController.userName.value[0].toUpperCase()}'
+                        '${_profileController.userName.value.substring(1)}'
+                    : '',
             onEdit: editName,
           ),
           const Divider(height: 1, indent: 74, endIndent: 18),

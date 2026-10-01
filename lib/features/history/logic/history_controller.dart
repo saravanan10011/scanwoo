@@ -1,3 +1,4 @@
+import 'package:quick_scanner/services/invoice_reproceer.dart';
 import 'package:quick_scanner/utils/common_color.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -130,7 +131,25 @@ class HistoryController extends GetxController {
   /// One page from the API. Throws a readable message on failure.
   Future<InvoiceList?> _fetchPage(int page) async {
     final result = await _repo.invoiceList(page: page);
-    if (result is SuccessStatus) return invoiceListFromJson(result.responseStr);
+    if (result is SuccessStatus) {
+      final decoded = json.decode(result.responseStr);
+      if (decoded is Map && decoded['data'] is List) {
+        // Re-extract invoices the backend could not parse (zeros / blanks).
+        decoded['data'] =
+            (decoded['data'] as List)
+                .map(
+                  (e) =>
+                      e is Map
+                          ? InvoiceReprocessor.reprocess(
+                            Map<String, dynamic>.from(e),
+                          )
+                          : e,
+                )
+                .toList();
+        return InvoiceList.fromJson(Map<String, dynamic>.from(decoded));
+      }
+      return invoiceListFromJson(result.responseStr);
+    }
     if (result is FailureStatus) throw Exception(_friendly(result));
     return null;
   }

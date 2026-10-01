@@ -147,47 +147,126 @@ class HomeScreenState extends State<HomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         Row(
+              //           children: [
+              //             Container(
+              //               width: 6,
+              //               height: 6,
+              //               margin: const EdgeInsets.only(right: 6),
+              //               decoration: const BoxDecoration(
+              //                 color: ColorConstants.white70,
+              //                 shape: BoxShape.circle,
+              //               ),
+              //             ),
+              //             Text(
+              //               _greeting(),
+              //               style: const TextStyle(
+              //                 color: ColorConstants.white70,
+              //                 fontSize: 13,
+              //                 fontWeight: FontWeight.w500,
+              //                 letterSpacing: 0.3,
+              //               ),
+              //             ),
+              //           ],
+              //         ),
+              //         const SizedBox(height: 6),
+              //         Text(
+              //           _profileController.userName.value.isNotEmpty
+              //               ? '${_profileController.userName.value[0].toUpperCase()}${_profileController.userName.value.substring(1)}'
+              //               : '',
+              //           maxLines: 1,
+              //           overflow: TextOverflow.ellipsis,
+              //           style: const TextStyle(
+              //             color: ColorConstants.white,
+              //             fontSize: 25,
+
+              //             fontWeight: FontWeight.w800,
+              //             letterSpacing: 0.1,
+              //             height: 1.1,
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //     InkWell(
+              //       onTap: () => goToTab(3),
+              //       borderRadius: BorderRadius.circular(24),
+              //       child: Container(
+              //         width: 46,
+              //         height: 46,
+              //         decoration: BoxDecoration(
+              //           color: ColorConstants.white.withValues(alpha: 0.14),
+              //           shape: BoxShape.circle,
+              //           border: Border.all(
+              //             color: ColorConstants.white.withValues(alpha: 0.25),
+              //             width: 1,
+              //           ),
+              //         ),
+              //         child: const Icon(
+              //           Icons.person_outline_rounded,
+              //           color: ColorConstants.white,
+              //           size: 22,
+              //         ),
+              //       ),
+              //     ),
+              //   ],
+              // ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: const BoxDecoration(
-                              color: ColorConstants.white70,
-                              shape: BoxShape.circle,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: const BoxDecoration(
+                                color: ColorConstants.white70,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          Text(
-                            _greeting(),
-                            style: const TextStyle(
-                              color: ColorConstants.white70,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.3,
+                            Text(
+                              _greeting(),
+                              style: const TextStyle(
+                                color: ColorConstants.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _profileController.userName.value,
-                        style: const TextStyle(
-                          color: ColorConstants.white,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.1,
-                          height: 1.1,
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Text(
+                          _profileController.userName.value.isNotEmpty
+                              ? '${_profileController.userName.value[0].toUpperCase()}'
+                                  '${_profileController.userName.value.substring(1)}'
+                              : '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: ColorConstants.white,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.1,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  const SizedBox(width: 12),
+
                   InkWell(
                     onTap: () => goToTab(3),
                     borderRadius: BorderRadius.circular(24),
@@ -211,6 +290,7 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
               ValueListenableBuilder<List<ScanRecord>>(
                 valueListenable: ScanHistoryService.recordsNotifier,
@@ -241,7 +321,7 @@ class HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: _statChip(
             Icons.calendar_month_rounded,
-            stats == null ? '--' : '${stats.pending}',
+            stats == null ? '--' : '${stats.uploadedTotal}',
             'Uploading Invoices',
           ),
         ),
@@ -536,7 +616,7 @@ class HomeScreenState extends State<HomeScreen> {
                     ),
                     SizedBox(height: Sizes.h(3)),
                     Text(
-                      formatShortDate(inv.uploadedAt),
+                      formatUploaded(inv.uploadedAt),
                       style: TextStyle(
                         color: ColorConstants.textMuted,
                         fontSize: Sizes.sp(11),
@@ -547,7 +627,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               SizedBox(width: Sizes.w(8)),
               Text(
-                inv.gross.toStringAsFixed(2),
+                "${inv.gross}",
                 style: TextStyle(
                   fontSize: Sizes.sp(14),
                   fontWeight: FontWeight.w800,
