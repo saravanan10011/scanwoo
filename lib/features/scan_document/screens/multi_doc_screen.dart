@@ -236,14 +236,14 @@ class MultiDocumentResultController extends GetxController {
                 padding: EdgeInsets.all(_sw(10)),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: ColorConstants.danger.withOpacity(0.08),
+                  color: ColorConstants.danger.withValues(alpha: 0.08),
                 ),
                 child: Container(
                   width: _sw(56),
                   height: _sw(56),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: ColorConstants.danger.withOpacity(0.14),
+                    color: ColorConstants.danger.withValues(alpha: 0.14),
                   ),
                   child: Icon(
                     Icons.text_snippet_outlined,

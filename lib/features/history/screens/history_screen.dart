@@ -977,7 +977,7 @@ class _InvoiceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             // Text(
-            //   '£${invoice.gross.toStringAsFixed(2)}',
+            //   '${invoice.gross.toStringAsFixed(2)}',
             //   style: TextStyle(
             //     fontSize: Sizes.s(16),
             //     fontWeight: FontWeight.w800,

@@ -11,7 +11,8 @@ class ForgetPasswordScreen extends StatefulWidget {
 }
 
 class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
-  final ForgetPasswordViewModel _forgetPasswordViewModel = Get.find<ForgetPasswordViewModel>();
+  final ForgetPasswordViewModel _forgetPasswordViewModel =
+      Get.find<ForgetPasswordViewModel>();
 
   final GlobalKey<FormState> _forgetKey = GlobalKey<FormState>();
 
@@ -88,7 +89,10 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                       decoration: BoxDecoration(
                         color: ColorConstants.white,
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: ColorConstants.white, width: 1),
+                        border: Border.all(
+                          color: ColorConstants.white,
+                          width: 1,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: primary.withValues(alpha: 0.08),
@@ -296,11 +300,11 @@ class ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                                               ),
                                             ),
                                             SizedBox(width: 8),
-                                            Icon(
-                                              Icons.arrow_forward_rounded,
-                                              size: 18,
-                                              color: ColorConstants.white,
-                                            ),
+                                            // Icon(
+                                            //   Icons.arrow_forward_rounded,
+                                            //   size: 18,
+                                            //   color: ColorConstants.white,
+                                            // ),
                                           ],
                                         ),
                               ),

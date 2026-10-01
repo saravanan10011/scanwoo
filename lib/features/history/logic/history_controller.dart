@@ -161,7 +161,9 @@ class HistoryController extends GetxController {
         final list = await _fetchPage(page);
         if (list == null) break;
         final fresh = list.data.where((e) => seen.add(e.id)).toList();
-        if (fresh.isEmpty) break; // server ignored ?page= -> stop, no duplicates
+        if (fresh.isEmpty) {
+          break; // server ignored ?page= -> stop, no duplicates
+        }
         all.addAll(fresh);
         last = list.meta.lastPage;
         page++;
@@ -235,13 +237,16 @@ class HistoryController extends GetxController {
   void _toast(String msg, {bool isError = false}) {
     final ctx = Get.context;
     if (ctx == null) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(
-        backgroundColor: isError ? ColorConstants.red : ColorConstants.green,
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ScaffoldMessenger.of(ctx)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: isError ? ColorConstants.red : ColorConstants.green,
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
   // Future<void> downloadInvoicePdf(int invoiceId) async {
   //   final url = Uri.parse('${APICalls.baseUrl}/invoices/$invoiceId/download');

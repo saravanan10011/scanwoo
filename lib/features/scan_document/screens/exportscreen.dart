@@ -328,7 +328,7 @@ class ExportScreen extends StatelessWidget {
           ),
           SizedBox(width: Sizes.w(8)),
           Text(
-            '£${inv.gross.toStringAsFixed(2)}',
+            inv.gross.toStringAsFixed(2),
             style: TextStyle(
               fontSize: Sizes.sp(14),
               fontWeight: FontWeight.w800,

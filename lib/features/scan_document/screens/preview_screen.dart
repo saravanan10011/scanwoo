@@ -234,6 +234,11 @@ class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ───────────────── Responsive helpers (375 x 812 baseline) ─────────────────
+    double sw(double v) => Get.width / 375 * v;
+
+    /// Font / icon scaling: follows width but is clamped so tablets don't get giant text.
+    double sp(double v) => v * (Get.width / 375).clamp(0.85, 1.3);
     return AppBar(
       backgroundColor: _Palette.primary,
       surfaceTintColor: ColorConstants.transparent,
@@ -242,10 +247,24 @@ class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_new_rounded, size: Sizes.w(18)),
-        color: _Palette.background,
-        onPressed: Get.back,
+      leading: Material(
+        color: ColorConstants.white.withValues(alpha: 0.18),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            Get.back();
+          },
+          child: SizedBox(
+            width: sw(40),
+            height: sw(40),
+            child: Icon(
+              Icons.arrow_back_ios,
+              size: sp(17),
+              color: ColorConstants.white,
+            ),
+          ),
+        ),
       ),
       title: Text(
         'Scan preview',
@@ -275,7 +294,10 @@ class _StatusChip extends StatelessWidget {
     final label = empty ? 'Empty' : 'Text detected';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: Sizes.w(10), vertical: Sizes.w(5)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Sizes.w(10),
+        vertical: Sizes.w(5),
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(_Radius.pill),
@@ -378,7 +400,9 @@ class _ImageCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: ColorConstants.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(_Radius.pill),
-                border: Border.all(color: ColorConstants.white.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: ColorConstants.white.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -633,10 +657,17 @@ class _CopyButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(_Radius.sm),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: Sizes.w(12), vertical: Sizes.w(9)),
+          padding: EdgeInsets.symmetric(
+            horizontal: Sizes.w(12),
+            vertical: Sizes.w(9),
+          ),
           child: Row(
             children: [
-              Icon(Icons.copy_rounded, size: Sizes.w(15), color: _Palette.primary),
+              Icon(
+                Icons.copy_rounded,
+                size: Sizes.w(15),
+                color: _Palette.primary,
+              ),
               SizedBox(width: Sizes.w(6)),
               Text(
                 'Copy',

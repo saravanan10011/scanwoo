@@ -140,7 +140,7 @@ class InvoiceViewDialog extends StatelessWidget {
                       _card(
                         children: [
                           _summaryRow(
-                            Icons.tag_rounded,
+                            Icons.receipt_long_rounded,
                             'Invoice Number',
                             _dash(invoice.invoiceNo),
                           ),
@@ -303,7 +303,7 @@ class InvoiceViewDialog extends StatelessWidget {
           ),
           SizedBox(height: Sizes.h(6)),
           Text(
-            '£${invoice.gross.toStringAsFixed(2)}',
+            invoice.gross.toStringAsFixed(2),
             style: TextStyle(
               fontSize: Sizes.sp(28),
               fontWeight: FontWeight.w800,

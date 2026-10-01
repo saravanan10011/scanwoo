@@ -1,4 +1,6 @@
+import 'package:quick_scanner/features/scan_document/screens/crop_screen.dart';
 import 'package:quick_scanner/routes_list.dart';
+import 'package:quick_scanner/utils/common_color.dart';
 import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:quick_scanner/features/scan_document/logic/scannercontroller.dart';
 import 'package:quick_scanner/services/invoice_exterst.dart';
 import '../../../services/ocr_service.dart';
+import 'package:mime/mime.dart';
 
 const _primary = Color(0xFF4038D8);
 const _primaryDark = Color(0xFF2C2AC0);
@@ -47,22 +50,82 @@ class ScannerScreenController extends GetxController {
     _selectLast();
   }
 
+  // Future<void> gallery() async {
+  //   final files = await picker.pickMultiImage(imageQuality: 85);
+
+  //   if (files.isEmpty || isClosed) return;
+
+  //   for (final file in files) {
+  //     if (isClosed) return;
+
+  //     final File? croppedImage = await Get.toNamed<dynamic>(
+  //       RouteList.cropAdjust,
+  //       arguments: {'image': File(file.path)},
+  //     );
+
+  //     if (croppedImage == null || isClosed) continue;
+
+  //     images.add(croppedImage);
+  //     _selectLast();
+  //   }
+  // }
+  bool isSupportedImage(String path) {
+    final mimeType = lookupMimeType(path);
+
+    // print('File path: $path');
+    // print('File name: ${path.split('/').last}');
+    // print('MIME type: $mimeType');
+
+    return mimeType == 'image/jpeg' ||
+        mimeType == 'image/png' ||
+        mimeType == 'image/webp';
+  }
+
   Future<void> gallery() async {
     final files = await picker.pickMultiImage(imageQuality: 85);
 
     if (files.isEmpty || isClosed) return;
 
+    bool hasUnsupportedFile = false;
+
     for (final file in files) {
       if (isClosed) return;
+
+      // print('------------------------------');
+      // print('Selected file: ${file.path}');
+      // print('File name: ${file.name}');
+      // print('File extension: ${file.path.split('.').last}');
+      // print('MIME type: ${lookupMimeType(file.path)}');
+
+      if (!isSupportedImage(file.path)) {
+        hasUnsupportedFile = true;
+
+        // print('❌ Unsupported image: ${file.name}');
+        continue;
+      }
+
+      // print('✅ Supported image: ${file.name}');
 
       final File? croppedImage = await Get.toNamed<dynamic>(
         RouteList.cropAdjust,
         arguments: {'image': File(file.path)},
       );
-
+      if (Get.isRegistered<CropAdjustController>(tag: file.path)) {
+        Get.delete<CropAdjustController>(tag: file.path, force: true);
+      }
       if (croppedImage == null || isClosed) continue;
 
       images.add(croppedImage);
+    }
+
+    if (hasUnsupportedFile && !isClosed) {
+      _showNoTextAlert(
+        title: 'Unsupported image',
+        message: 'Only JPG, PNG, and WEBP images are supported.',
+      );
+    }
+
+    if (images.isNotEmpty && !isClosed) {
       _selectLast();
     }
   }
@@ -77,6 +140,99 @@ class ScannerScreenController extends GetxController {
         selectedImage.value = images.length - 1;
       }
     });
+  }
+
+  double _sw(double v) => Get.width / 375 * v;
+  double _sh(double v) => Get.height / 812 * v;
+  double _sp(double v) => (Get.width / 375).clamp(0.85, 1.25) * v;
+  Future<void> _showNoTextAlert({
+    required String title,
+    required String message,
+  }) async {
+    await Get.dialog(
+      Dialog(
+        backgroundColor: ColorConstants.white,
+        elevation: 0,
+        insetPadding: EdgeInsets.symmetric(horizontal: _sw(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_sw(24)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(_sw(22), _sh(26), _sw(22), _sh(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon badge with soft halo
+              Container(
+                padding: EdgeInsets.all(_sw(10)),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ColorConstants.danger.withValues(alpha: 0.08),
+                ),
+                child: Container(
+                  width: _sw(56),
+                  height: _sw(56),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ColorConstants.danger.withValues(alpha: 0.14),
+                  ),
+                  child: Icon(
+                    Icons.text_snippet_outlined,
+                    color: ColorConstants.danger,
+                    size: _sp(28),
+                  ),
+                ),
+              ),
+              SizedBox(height: _sh(18)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: ColorConstants.textDark2,
+                  fontSize: _sp(18),
+                  height: 1.25,
+                ),
+              ),
+              SizedBox(height: _sh(8)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ColorConstants.textMuted2,
+                  fontSize: _sp(13.5),
+                  height: 1.45,
+                ),
+              ),
+              SizedBox(height: _sh(22)),
+              SizedBox(
+                width: double.infinity,
+                height: _sh(46),
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorConstants.primary,
+                    foregroundColor: ColorConstants.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(_sw(14)),
+                    ),
+                  ),
+                  child: Text(
+                    'Got it',
+                    style: TextStyle(
+                      fontSize: _sp(15),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
   }
 
   Future<void> process() async {
@@ -278,7 +434,7 @@ class ScannerScreen extends StatelessWidget {
 
             return Row(
               children: [
-                _circleIconButton(Icons.arrow_back, () => Get.back()),
+                _circleIconButton(Icons.arrow_back_ios, () => Get.back()),
                 SizedBox(width: Sizes.w(10)),
                 Expanded(
                   child: Column(
@@ -322,22 +478,18 @@ class ScannerScreen extends StatelessWidget {
   Widget _circleIconButton(IconData icon, VoidCallback onTap) {
     final size = Sizes.w(40);
 
-    return Material(
-      color: Colors.white.withValues(alpha: 0.15),
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white24, width: 1),
-          ),
-          child: Icon(icon, size: Sizes.w(19), color: Colors.white),
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white24, width: 1),
         ),
+        child: Icon(icon, size: Sizes.w(19), color: Colors.white),
       ),
     );
   }

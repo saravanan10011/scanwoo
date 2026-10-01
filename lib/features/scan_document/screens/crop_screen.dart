@@ -10,7 +10,6 @@ import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 
-
 /// args: [sourcePath, outPath, angle]
 /// Runs in a background isolate so large photos don't freeze the UI.
 String _rotateInIsolate(List<String> args) {
@@ -137,31 +136,34 @@ class CropAdjustScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Get.put(CropAdjustController(image));
+    final c = Get.put(
+      CropAdjustController(image),
+      tag: image.path, // unique per image
+    );
 
     return Obx(
       () => AnnotatedRegion<SystemUiOverlayStyle>(
-          value: const SystemUiOverlayStyle(
-            statusBarColor: ColorConstants.primary,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.dark,
-          ),
-          child: Scaffold(
-            backgroundColor: ColorConstants.background,
-            body: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                    child: _buildPreview(c),
-                  ),
+        value: const SystemUiOverlayStyle(
+          statusBarColor: ColorConstants.primary,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          backgroundColor: ColorConstants.background,
+          body: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: _buildPreview(c),
                 ),
-                _buildBottomPanel(context, c),
-              ],
-            ),
+              ),
+              _buildBottomPanel(context, c),
+            ],
           ),
         ),
+      ),
     );
   }
 
@@ -215,22 +217,18 @@ class CropAdjustScreen extends StatelessWidget {
   Widget _circleIconButton(IconData icon, VoidCallback onTap) {
     final size = Sizes.w(40);
 
-    return Material(
-      color: ColorConstants.white.withValues(alpha: 0.15),
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: ColorConstants.white24, width: 1),
-          ),
-          child: Icon(icon, size: Sizes.w(19), color: ColorConstants.white),
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: ColorConstants.white24, width: 1),
         ),
+        child: Icon(icon, size: Sizes.w(19), color: ColorConstants.white),
       ),
     );
   }
@@ -252,28 +250,28 @@ class CropAdjustScreen extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Image.file(
-                  c.currentImage.value,
-                  key: ValueKey(c.currentImage.value.path),
-                  fit: BoxFit.contain,
-                ),
+          fit: StackFit.expand,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Image.file(
+                c.currentImage.value,
+                key: ValueKey(c.currentImage.value.path),
+                fit: BoxFit.contain,
               ),
-              if (c.isProcessing.value)
-                Container(
-                  color: ColorConstants.black38,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: ColorConstants.white,
-                      strokeWidth: 2.5,
-                    ),
+            ),
+            if (c.isProcessing.value)
+              Container(
+                color: ColorConstants.black38,
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: ColorConstants.white,
+                    strokeWidth: 2.5,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -329,34 +327,34 @@ class CropAdjustScreen extends StatelessWidget {
         border: Border.all(color: ColorConstants.border3),
       ),
       child: Row(
-          children: [
-            _buildTool(
-              c,
-              icon: Icons.rotate_left_rounded,
-              title: 'Rotate Left',
-              onTap: () => c.rotateImage(angle: 270),
-            ),
-            _buildTool(
-              c,
-              icon: Icons.rotate_right_rounded,
-              title: 'Rotate Right',
-              onTap: () => c.rotateImage(angle: 90),
-            ),
-            _buildTool(
-              c,
-              icon: Icons.crop_rounded,
-              title: 'Crop',
-              onTap: c.openCropper,
-            ),
-            _buildTool(
-              c,
-              icon: Icons.restart_alt_rounded,
-              title: 'Reset',
-              onTap: c.resetImage,
-              enabled: c.isEdited,
-            ),
-          ],
-        ),
+        children: [
+          _buildTool(
+            c,
+            icon: Icons.rotate_left_rounded,
+            title: 'Rotate Left',
+            onTap: () => c.rotateImage(angle: 270),
+          ),
+          _buildTool(
+            c,
+            icon: Icons.rotate_right_rounded,
+            title: 'Rotate Right',
+            onTap: () => c.rotateImage(angle: 90),
+          ),
+          _buildTool(
+            c,
+            icon: Icons.crop_rounded,
+            title: 'Crop',
+            onTap: c.openCropper,
+          ),
+          _buildTool(
+            c,
+            icon: Icons.restart_alt_rounded,
+            title: 'Reset',
+            onTap: c.resetImage,
+            enabled: c.isEdited,
+          ),
+        ],
+      ),
     );
   }
 
@@ -382,7 +380,10 @@ class CropAdjustScreen extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? ColorConstants.primaryPale : ColorConstants.transparent,
+            color:
+                selected
+                    ? ColorConstants.primaryPale
+                    : ColorConstants.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
@@ -412,22 +413,24 @@ class CropAdjustScreen extends StatelessWidget {
         width: Sizes.wp(0.5),
         height: 48,
         child: ElevatedButton(
-            onPressed: c.isProcessing.value ? null : c.next,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ColorConstants.primary,
-              foregroundColor: ColorConstants.white,
-              disabledBackgroundColor: ColorConstants.primary.withValues(alpha: 0.4),
-              disabledForegroundColor: ColorConstants.white70,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+          onPressed: c.isProcessing.value ? null : c.next,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ColorConstants.primary,
+            foregroundColor: ColorConstants.white,
+            disabledBackgroundColor: ColorConstants.primary.withValues(
+              alpha: 0.4,
             ),
-            child: const Text(
-              'Next',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            disabledForegroundColor: ColorConstants.white70,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
+          child: const Text(
+            'Next',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
       ),
     );
   }

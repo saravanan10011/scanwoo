@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:quick_scanner/features/home/invoice_details.dart';
 import 'package:quick_scanner/utils/common_color.dart';
 import 'package:quick_scanner/routes_list.dart';
@@ -240,7 +242,7 @@ class HomeScreenState extends State<HomeScreen> {
           child: _statChip(
             Icons.calendar_month_rounded,
             stats == null ? '--' : '${stats.pending}',
-            'Pending Review',
+            'Uploading Invoices',
           ),
         ),
       ],
@@ -545,7 +547,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               SizedBox(width: Sizes.w(8)),
               Text(
-                '£${inv.gross.toStringAsFixed(2)}',
+                inv.gross.toStringAsFixed(2),
                 style: TextStyle(
                   fontSize: Sizes.sp(14),
                   fontWeight: FontWeight.w800,

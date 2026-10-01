@@ -966,8 +966,8 @@ class _EditNameDialogState extends State<EditNameDialog> {
                     : () async {
                       if (!formKey.currentState!.validate()) return;
                       if (context.mounted) {
-                        await c.updateName();
                         Get.back();
+                        await c.updateName();
                       }
                     },
             child:

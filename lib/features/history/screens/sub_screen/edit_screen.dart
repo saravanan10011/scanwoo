@@ -98,6 +98,22 @@ class EditRawTextScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
+        leading: InkWell(
+          // customBorder: const CircleBorder(),
+          onTap: () {
+            Get.back();
+          },
+          child: SizedBox(
+            // width: _sw(40),
+            // height: _sw(40),
+            child: Icon(
+              Icons.arrow_back_ios,
+              size: _sp(17),
+              color: ColorConstants.white,
+            ),
+          ),
+        ),
+
         title: Text('Edit Raw Data', style: TextStyle(fontSize: _sp(18))),
         backgroundColor: primary,
         foregroundColor: ColorConstants.white,
