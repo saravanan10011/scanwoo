@@ -810,18 +810,49 @@ class InvoiceExtractionService {
     return RegExp('(?<![A-Za-z])$chars(?![A-Za-z])', caseSensitive: false);
   }
 
-  /// All money-looking values in [s]: 9.25, 678.81, 1,234.56, 12,50
+  // /// All money-looking values in [s]: 9.25, 678.81, 1,234.56, 12,50
+  // static List<double> _parseAmounts(String s) {
+  //   var t = s.replaceAll(RegExp(r'\d+(?:[.,]\d+)?\s*%'), ' '); // drop rates
+  //   t = _fixNumericTokens(t);
+
+  //   final rx = RegExp(r'(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)[.,](\d{2})(?!\d)');
+  //   final out = <double>[];
+  //   for (final m in rx.allMatches(t)) {
+  //     final whole = m.group(1)!.replaceAll(',', '');
+  //     final v = double.tryParse('$whole.${m.group(2)}');
+  //     if (v != null) out.add(v);
+  //   }
+  //   return out;
+  // }
+  /// All money-looking values in [s]:
+  /// 9.25, 678.81, 1,234.56, 12,50, £25.00, GBP 25.00, ₹100
   static List<double> _parseAmounts(String s) {
     var t = s.replaceAll(RegExp(r'\d+(?:[.,]\d+)?\s*%'), ' '); // drop rates
+
     t = _fixNumericTokens(t);
 
-    final rx = RegExp(r'(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)[.,](\d{2})(?!\d)');
+    final rx = RegExp(
+      r'(?:(?:£|€|\$|₹|GBP|EUR|USD|INR|Rs\.?)\s*)?'
+      r'(\d{1,3}(?:,\d{3})*|\d+)'
+      r'(?:[.,](\d{1,2}))?',
+      caseSensitive: false,
+    );
+
     final out = <double>[];
+
     for (final m in rx.allMatches(t)) {
       final whole = m.group(1)!.replaceAll(',', '');
-      final v = double.tryParse('$whole.${m.group(2)}');
-      if (v != null) out.add(v);
+      final decimal = m.group(2);
+
+      final value = double.tryParse(
+        decimal == null ? whole : '$whole.$decimal',
+      );
+
+      if (value != null) {
+        out.add(value);
+      }
     }
+
     return out;
   }
 

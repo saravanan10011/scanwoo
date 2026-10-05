@@ -88,10 +88,14 @@ class ForgetPasswordViewModel extends GetxController {
       debugPrint("REQUEST BODY => $body");
 
       final result = await _forgetPasswordRespImp.resetPassword(body);
-      debugPrint("REQUEST result => $result");
+
+      debugPrint("REQUEST RESULT => $result");
 
       if (result is SuccessStatus) {
         final data = jsonDecode(result.responseStr);
+
+        // Stop loading before showing success alert
+        isLoading.value = false;
 
         await Get.dialog(
           RegisterResultDialog(
@@ -102,22 +106,36 @@ class ForgetPasswordViewModel extends GetxController {
           barrierDismissible: false,
         );
       } else if (result is FailureStatus) {
-        debugPrint("REQUEST result => ${result.message}");
+        debugPrint("REQUEST FAILURE => ${result.message}");
 
         final data = jsonDecode(result.message);
-        final message = data['message'];
+
+        // Stop loading before showing failure alert
+        isLoading.value = false;
+
         await Get.dialog(
           RegisterResultDialog(
-            message: message,
+            message: data["message"] ?? "Something went wrong",
             isSuccess: false,
-            buttonName: "Ok",
-            // redirectRoute: RouteList.login,
+            buttonName: "OK",
           ),
           barrierDismissible: false,
         );
       }
-    } finally {
+    } catch (e) {
+      debugPrint("RESET PASSWORD ERROR => $e");
+
+      // Stop loading if unexpected error occurs
       isLoading.value = false;
+
+      await Get.dialog(
+        RegisterResultDialog(
+          message: "Something went wrong. Please try again.",
+          isSuccess: false,
+          buttonName: "OK",
+        ),
+        barrierDismissible: false,
+      );
     }
   }
 }
