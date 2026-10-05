@@ -10,6 +10,7 @@ class ApiServices {
 
   // Common headers
   Map<String, String> getHeaders() {
+    print("Token ${tokenDataService.accessToken}");
     return {
       "Authorization": "Bearer ${tokenDataService.accessToken}",
       'Content-Type': 'application/json',

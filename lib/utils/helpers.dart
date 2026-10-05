@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import '../services/models/scan_record.dart';
 
 String formatShortDate(DateTime date) {
@@ -17,6 +18,23 @@ String formatShortDate(DateTime date) {
   ];
   return '${date.day.toString().padLeft(2, '0')} '
       '${months[date.month - 1]} ${date.year}';
+}
+
+DateTime _lastSundayUtc(int year, int month, int hour) {
+  final last = DateTime.utc(year, month + 1, 0);
+  final back = last.weekday % 7;
+  return DateTime.utc(year, month, last.day - back, hour);
+}
+
+bool _isUkSummerTime(DateTime utc) {
+  final start = _lastSundayUtc(utc.year, 3, 1);
+  final end = _lastSundayUtc(utc.year, 10, 1);
+  return !utc.isBefore(start) && utc.isBefore(end);
+}
+
+DateTime toUkTime(DateTime date) {
+  final utc = date.toUtc();
+  return utc.add(Duration(hours: _isUkSummerTime(utc) ? 1 : 0));
 }
 
 String formatDateTime(DateTime date) {
@@ -45,14 +63,9 @@ String invoiceCode(int index) {
 
 const String kCurrency = '\u00A3';
 
-String formatMoney(num value, {String symbol = kCurrency}) {
-  final neg = value < 0;
-  final parts = value.abs().toStringAsFixed(2).split('.');
-  final whole = parts[0].replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (m) => ',',
-  );
-  return '${neg ? '-' : ''}$symbol$whole.${parts[1]}';
+String formatMoney(num value, {String symbol = '£'}) {
+  final locale = symbol == '₹' ? 'en_IN' : 'en_GB';
+  return '$symbol${NumberFormat('#,##0.00', locale).format(value)}';
 }
 
 /// formatMoney for the built-in PDF font (Helvetica has no ₹ glyph).
@@ -77,7 +90,9 @@ DateTime parseServerTime(dynamic raw) {
 
 /// 01 Oct 2026 · 3:45 PM  (local time)
 String formatUploaded(DateTime date) {
-  final l = date.toLocal();
+  // final l = date.toLocal();
+  final l = toUkTime(date); // was: date.toLocal()
+
   final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
   final m = l.minute.toString().padLeft(2, '0');
   final ap = l.hour >= 12 ? 'PM' : 'AM';

@@ -1,51 +1,58 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:app_links/app_links.dart';
 import 'package:quick_scanner/routes_list.dart';
 
 class DeepLinkService {
-  static Uri? pendingDeepLink;
-  static bool _handledFirstLink = false;
+  static bool get hasPending => _pendingDeepLink != null;
+  static final AppLinks _appLinks = AppLinks();
+  static StreamSubscription<Uri>? _sub;
+  static Uri? _pendingDeepLink;
+  static bool _appReady = false;
 
   static Future<void> init() async {
-    final appLinks = AppLinks();
+    // Cold start: link that launched the app
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) _onLink(initial);
+    } catch (e) {
+      debugPrint("Initial link error => $e");
+    }
 
-    appLinks.uriLinkStream.listen(
-      (uri) {
-        debugPrint("Link received => $uri");
-
-        if (!_handledFirstLink) {
-          _handledFirstLink = true;
-          pendingDeepLink = uri;
-          return;
-        }
-
-        // App is already running, Navigator is definitely ready.
-        pendingDeepLink = uri;
-        handlePendingDeepLink();
-      },
-      onError: (error) {
-        debugPrint("DeepLink Stream Error => $error");
-      },
+    // Links while app is running
+    _sub?.cancel();
+    _sub = _appLinks.uriLinkStream.listen(
+      _onLink,
+      onError: (e) => debugPrint("DeepLink Stream Error => $e"),
     );
   }
 
-  static void handlePendingDeepLink() {
-    if (pendingDeepLink == null) return;
+  /// Call this ONCE when splash/init is finished and routes are ready.
+  static void markReady() {
+    _appReady = true;
+    _handlePending();
+  }
 
-    final uri = pendingDeepLink!;
-    pendingDeepLink = null;
+  static void _onLink(Uri uri) {
+    debugPrint("Link received => $uri");
+    _pendingDeepLink = uri; // latest link wins, duplicates are overwritten
+    if (_appReady) _handlePending();
+  }
 
-    debugPrint("URI: $uri");
-    debugPrint("Segments: ${uri.pathSegments}");
+  static void _handlePending() {
+    final uri = _pendingDeepLink;
+    if (uri == null) return;
+    _pendingDeepLink = null;
 
-    if (uri.pathSegments.contains("reset-password")) {
-      final token = uri.pathSegments.last;
+    final segments = uri.pathSegments;
+    final i = segments.indexOf("reset-password");
 
+    if (i != -1 && i + 1 < segments.length) {
       Get.offAllNamed(
         RouteList.resetPassword,
         arguments: {
-          "token": token,
+          "token": segments[i + 1],
           "email": uri.queryParameters["email"] ?? "",
         },
       );

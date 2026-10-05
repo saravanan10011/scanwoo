@@ -15,6 +15,17 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
+// Force every plugin (e.g. file_picker) to compile against API 36.
+// Must come BEFORE the evaluationDependsOn block below.
+subprojects {
+    afterEvaluate {
+        extensions.findByName("android")?.let {
+            (it as com.android.build.gradle.BaseExtension).compileSdkVersion(36)
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

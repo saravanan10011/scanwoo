@@ -319,27 +319,6 @@ class InvoiceImagesDialog extends StatelessWidget {
                 ),
               ),
             ),
-            if (!img.isViewed) ...[
-              SizedBox(width: Sizes.w(6)),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Sizes.w(8),
-                  vertical: Sizes.h(3),
-                ),
-                decoration: BoxDecoration(
-                  color: ColorConstants.redAccent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(Sizes.w(20)),
-                ),
-                child: Text(
-                  'New',
-                  style: TextStyle(
-                    fontSize: Sizes.sp(10.5),
-                    fontWeight: FontWeight.w700,
-                    color: ColorConstants.redAccent,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       );

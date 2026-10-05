@@ -17,6 +17,10 @@ const background = ColorConstants.background;
 
 const _maxContentWidth = 720.0;
 
+/// Feature flags for card actions. Flip to `true` to bring them back.
+const _showDownload = false;
+const _showEdit = false;
+
 class ScanHistoryScreen extends StatelessWidget {
   final VoidCallback? onBack;
   const ScanHistoryScreen({super.key, this.onBack});
@@ -142,7 +146,7 @@ class ScanHistoryScreen extends StatelessWidget {
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 side,
-                Sizes.s(16),
+                Sizes.s(18),
                 side,
                 Sizes.s(24),
               ),
@@ -154,7 +158,7 @@ class ScanHistoryScreen extends StatelessWidget {
                     return Padding(
                       padding: EdgeInsets.only(
                         top: i == 0 ? 0 : Sizes.s(8),
-                        bottom: Sizes.s(10),
+                        bottom: Sizes.s(12),
                       ),
                       child: _sectionLabel(r.$1, r.$2),
                     );
@@ -208,7 +212,7 @@ class ScanHistoryScreen extends StatelessWidget {
             SliverToBoxAdapter(
               child: _paginationBar(side, cur, pages, offset, list.length),
             ),
-          SliverToBoxAdapter(child: SizedBox(height: Sizes.s(16))),
+          SliverToBoxAdapter(child: SizedBox(height: Sizes.s(24))),
         ],
       ),
     );
@@ -346,23 +350,9 @@ class ScanHistoryScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: primary,
-      padding: EdgeInsets.fromLTRB(side, Sizes.s(12), side, Sizes.s(8)),
+      padding: EdgeInsets.fromLTRB(side, Sizes.s(12), side, Sizes.s(10)),
       child: Row(
         children: [
-          // Container(
-          //   width: Sizes.s(42),
-          //   height: Sizes.s(42),
-          //   decoration: BoxDecoration(
-          //     color: ColorConstants.white.withValues(alpha: 0.16),
-          //     borderRadius: BorderRadius.circular(Sizes.s(13)),
-          //   ),
-          //   child: Icon(
-          //     Icons.receipt_long_rounded,
-          //     color: ColorConstants.white,
-          //     size: Sizes.s(22),
-          //   ),
-          // ),
-          SizedBox(width: Sizes.s(12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +362,7 @@ class ScanHistoryScreen extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: Sizes.s(20),
+                    fontSize: Sizes.s(21),
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                     color: ColorConstants.white,
@@ -394,25 +384,6 @@ class ScanHistoryScreen extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: Sizes.s(8)),
-          // Container(
-          //   padding: EdgeInsets.symmetric(
-          //     horizontal: Sizes.s(12),
-          //     vertical: Sizes.s(6),
-          //   ),
-          //   decoration: BoxDecoration(
-          //     color: ColorConstants.white,
-          //     borderRadius: BorderRadius.circular(Sizes.s(20)),
-          //   ),
-          //   child: Text(
-          //     '$total',
-          //     style: TextStyle(
-          //       fontSize: Sizes.s(13),
-          //       fontWeight: FontWeight.w800,
-          //       color: primaryDark,
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
@@ -610,12 +581,21 @@ class ScanHistoryScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.cloud_off_rounded,
-                size: Sizes.s(52),
-                color: ColorConstants.textMuted,
+              Container(
+                width: Sizes.s(88),
+                height: Sizes.s(88),
+                decoration: BoxDecoration(
+                  color: ColorConstants.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: ColorConstants.divider),
+                ),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  size: Sizes.s(40),
+                  color: ColorConstants.textMuted,
+                ),
               ),
-              SizedBox(height: Sizes.s(16)),
+              SizedBox(height: Sizes.s(20)),
               Text(
                 "Couldn't load invoices",
                 style: TextStyle(
@@ -832,7 +812,7 @@ class _InvoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ocr = _ocr();
-    final hasImages = invoice.images.isNotEmpty;
+    final imageCount = invoice.images.length;
     final radius = BorderRadius.circular(Sizes.s(18));
 
     return Container(
@@ -856,35 +836,41 @@ class _InvoiceCard extends StatelessWidget {
           color: ColorConstants.transparent,
           child: Stack(
             children: [
-              InkWell(
-                onTap: onView,
-                child: Padding(
-                  padding: EdgeInsets.only(left: Sizes.s(4)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
+              Padding(
+                padding: EdgeInsets.only(left: Sizes.s(4)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tappable info area -> opens the invoice
+                    InkWell(
+                      onTap: onView,
+                      child: Padding(
                         padding: EdgeInsets.fromLTRB(
                           Sizes.s(14),
                           Sizes.s(14),
                           Sizes.s(14),
-                          0,
+                          Sizes.s(12),
                         ),
-                        child: _topRow(ocr),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _topRow(ocr),
+                            SizedBox(height: Sizes.s(12)),
+                            _detailsPanel(),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: Sizes.s(12)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: Sizes.s(14)),
-                        child: _detailsPanel(),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        Sizes.s(12),
+                        0,
+                        Sizes.s(12),
+                        Sizes.s(12),
                       ),
-                      SizedBox(height: Sizes.s(8)),
-                      Divider(
-                        height: 1,
-                        color: ColorConstants.divider.withValues(alpha: 0.7),
-                      ),
-                      _actionsRow(hasImages),
-                    ],
-                  ),
+                      child: _actionsRow(imageCount),
+                    ),
+                  ],
                 ),
               ),
               // Status accent stripe
@@ -904,71 +890,41 @@ class _InvoiceCard extends StatelessWidget {
 
   Widget _topRow(({String label, Color color, IconData icon}) ocr) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: Sizes.s(34),
-          height: Sizes.s(34),
+          width: Sizes.s(38),
+          height: Sizes.s(38),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: ColorConstants.primarySoft,
-            borderRadius: BorderRadius.circular(Sizes.s(11)),
+            borderRadius: BorderRadius.circular(Sizes.s(12)),
           ),
           child: Text(
             '$serial',
             style: TextStyle(
-              fontSize: Sizes.s(12.5),
+              fontSize: Sizes.s(13),
               fontWeight: FontWeight.w800,
               color: primary,
             ),
           ),
         ),
-        SizedBox(width: Sizes.s(10)),
+        SizedBox(width: Sizes.s(12)),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _dash(invoice.supplier),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: Sizes.s(14.5),
-                  fontWeight: FontWeight.w800,
-                  color: ColorConstants.textDark,
-                  height: 1.25,
-                ),
-              ),
-              SizedBox(height: Sizes.s(3)),
-              // Text(
-              //   '# ${_dash(invoice.invoiceNo)}',
-              //   maxLines: 1,
-              //   overflow: TextOverflow.ellipsis,
-              //   style: TextStyle(
-              //     fontSize: Sizes.s(11.5),
-              //     fontWeight: FontWeight.w600,
-              //     color: ColorConstants.textMuted,
-              //   ),
-              // ),
-            ],
+          child: Text(
+            _dash(invoice.supplier),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: Sizes.s(14.5),
+              fontWeight: FontWeight.w800,
+              color: ColorConstants.textDark,
+              height: 1.25,
+            ),
           ),
         ),
         SizedBox(width: Sizes.s(8)),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Text(
-            //   '${invoice.grossFormatted.toStringAsFixed(2)}',
-            //   style: TextStyle(
-            //     fontSize: Sizes.s(16),
-            //     fontWeight: FontWeight.w800,
-            //     color: primaryDark,
-            //   ),
-            // ),
-            SizedBox(height: Sizes.s(5)),
-            _statusPill(ocr),
-          ],
-        ),
+        _statusPill(ocr),
       ],
     );
   }
@@ -1011,7 +967,7 @@ class _InvoiceCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: Sizes.s(8),
-        vertical: Sizes.s(3),
+        vertical: Sizes.s(4),
       ),
       decoration: BoxDecoration(
         color: ocr.color.withValues(alpha: 0.12),
@@ -1074,15 +1030,20 @@ class _InvoiceCard extends StatelessWidget {
     );
   }
 
-  Widget _actionsRow(bool hasImages) {
-    return Row(
-      children: [
-        _action(Icons.visibility_outlined, 'View', onView),
-        _action(Icons.image_outlined, 'Images', hasImages ? onImages : null),
+  Widget _actionsRow(int imageCount) {
+    final gap = SizedBox(width: Sizes.s(8));
+    final buttons = <Widget>[
+      _actionButton(Icons.visibility_outlined, 'View', onView, filled: true),
+      _actionButton(
+        Icons.image_outlined,
+        imageCount > 0 ? 'Images ($imageCount)' : 'Images',
+        imageCount > 0 ? onImages : null,
+      ),
+      if (_showDownload)
         downloading
             ? Expanded(
               child: SizedBox(
-                height: Sizes.s(48),
+                height: Sizes.s(40),
                 child: Center(
                   child: SizedBox(
                     width: Sizes.s(18),
@@ -1095,37 +1056,66 @@ class _InvoiceCard extends StatelessWidget {
                 ),
               ),
             )
-            : _action(Icons.file_download_outlined, 'Download', onDownload),
-        _action(Icons.edit_outlined, 'Edit', onEdit),
+            : _actionButton(
+              Icons.file_download_outlined,
+              'Download',
+              onDownload,
+            ),
+      if (_showEdit) _actionButton(Icons.edit_outlined, 'Edit', onEdit),
+    ];
+
+    return Row(
+      children: [
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) gap,
+          buttons[i],
+        ],
       ],
     );
   }
 
-  Widget _action(IconData icon, String label, VoidCallback? onTap) {
-    final color = onTap == null ? ColorConstants.divider : primary;
+  Widget _actionButton(
+    IconData icon,
+    String label,
+    VoidCallback? onTap, {
+    bool filled = false,
+  }) {
+    final disabled = onTap == null;
+    final fg =
+        disabled
+            ? ColorConstants.textMuted.withValues(alpha: 0.5)
+            : (filled ? ColorConstants.white : primary);
+    final bg =
+        disabled ? background : (filled ? primary : ColorConstants.primarySoft);
+
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          height: Sizes.s(48),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: Sizes.s(19), color: color),
-              SizedBox(height: Sizes.s(2)),
-              Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: Sizes.s(10.5),
-                  fontWeight: FontWeight.w600,
-                  color:
-                      onTap == null
-                          ? ColorConstants.divider
-                          : ColorConstants.textMuted,
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(Sizes.s(12)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(Sizes.s(12)),
+          child: SizedBox(
+            height: Sizes.s(40),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: Sizes.s(17), color: fg),
+                SizedBox(width: Sizes.s(6)),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: Sizes.s(12),
+                      fontWeight: FontWeight.w700,
+                      color: fg,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:quick_scanner/routes_list.dart';
 import 'package:quick_scanner/utils/common_color.dart';
 import 'package:quick_scanner/features/history/logic/history_controller.dart';
 import 'package:quick_scanner/features/history/model/history_model.dart';
 import 'package:quick_scanner/features/history/screens/view_img.dart';
 import 'package:quick_scanner/features/history/screens/view_invoice.dart';
+import 'package:quick_scanner/utils/helpers.dart';
 
 // ───────────────── Responsive helpers (375 x 812 baseline) ─────────────────
 double _sw(double v) => Get.width / 375 * v;
@@ -48,7 +48,9 @@ class InvoiceDetailScreen extends StatelessWidget {
   }
 
   String _fmtTime(DateTime d) {
-    final l = d.toLocal();
+    // final l = d.toLocal();
+    final l = toUkTime(d);
+
     final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
     final m = l.minute.toString().padLeft(2, '0');
     final ap = l.hour >= 12 ? 'PM' : 'AM';
@@ -630,125 +632,129 @@ class InvoiceDetailScreen extends StatelessWidget {
   }
 
   // ───────────────────────── Quick actions ─────────────────────────
-
   Widget _quickActions(HistoryController c) {
-    final hasImages = invoice.images.isNotEmpty;
+    final count = invoice.images.length;
+    final hasImages = count > 0;
 
-    return Row(
-      children: [
-        Expanded(
-          child: _actionTile(
-            Icons.image_outlined,
-            'Images',
-            hasImages ? '${invoice.images.length} attached' : 'None',
-            hasImages
-                ? () => Get.dialog(InvoiceImagesDialog(invoice: invoice))
-                : null,
-          ),
-        ),
-        SizedBox(width: _sw(12)),
-        Expanded(
-          child: _actionTile(
-            Icons.file_download_outlined,
-            'Download',
-            'CSV',
-            () => c.downloadInvoice(invoice.id, format: 'csv'),
-          ),
-        ),
-        SizedBox(width: _sw(12)),
-        Expanded(
-          child: _actionTile(Icons.edit_outlined, 'Edit', 'Raw text', () async {
-            await Get.toNamed(
-              RouteList.editRawText,
-              arguments: {
-                'invoice': invoice,
-                'initialText': c.rawTextOf(invoice),
-                'onSave': (String text) => c.updateRawText(invoice.id, text),
-              },
-            );
-            c.refreshList();
-          }),
-        ),
-      ],
+    return _actionCard(
+      icon: Icons.photo_library_outlined,
+      title: 'Invoice images',
+      subtitle:
+          hasImages
+              ? '$count ${count == 1 ? 'image' : 'images'} attached'
+              : 'No images attached',
+      onTap:
+          hasImages
+              ? () => Get.dialog(InvoiceImagesDialog(invoice: invoice))
+              : null,
     );
   }
 
-  Widget _actionTile(
-    IconData icon,
-    String label,
-    String sub,
-    VoidCallback? onTap,
-  ) {
+  Widget _actionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback? onTap,
+  }) {
     final enabled = onTap != null;
     final fg =
         enabled ? ColorConstants.primaryBright : ColorConstants.textMuted;
-    final r = BorderRadius.circular(_sw(18));
+    final r = BorderRadius.circular(_sw(20));
 
-    return Material(
-      color: ColorConstants.white,
-      borderRadius: r,
-      child: InkWell(
-        onTap:
-            onTap == null
-                ? null
-                : () {
-                  HapticFeedback.lightImpact();
-                  onTap();
-                },
+    return Container(
+      decoration: BoxDecoration(
         borderRadius: r,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: _sh(16), horizontal: _sw(4)),
-          decoration: BoxDecoration(
-            borderRadius: r,
-            border: Border.all(
-              color:
-                  enabled
-                      ? ColorConstants.primaryBright.withValues(alpha: 0.25)
-                      : ColorConstants.divider,
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: ColorConstants.primaryDeep.withValues(alpha: 0.06),
+            blurRadius: _sw(14),
+            offset: Offset(0, _sh(4)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: _sw(46),
-                height: _sw(46),
-                decoration: BoxDecoration(
-                  color:
-                      enabled
-                          ? ColorConstants.primarySoft
-                          : ColorConstants.divider.withValues(alpha: 0.4),
-                  shape: BoxShape.circle,
+        ],
+      ),
+      child: Material(
+        color: ColorConstants.white,
+        borderRadius: r,
+        child: InkWell(
+          borderRadius: r,
+          onTap:
+              enabled
+                  ? () {
+                    HapticFeedback.lightImpact();
+                    onTap();
+                  }
+                  : null,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: _sw(14),
+              vertical: _sh(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: _sw(48),
+                  height: _sw(48),
+                  decoration: BoxDecoration(
+                    color:
+                        enabled
+                            ? ColorConstants.primarySoft
+                            : ColorConstants.divider.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(_sw(14)),
+                  ),
+                  child: Icon(icon, size: _sp(23), color: fg),
                 ),
-                child: Icon(icon, size: _sp(22), color: fg),
-              ),
-              SizedBox(height: _sh(10)),
-              Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: _sp(13),
-                  fontWeight: FontWeight.w700,
-                  color:
-                      enabled
-                          ? ColorConstants.textDark
-                          : ColorConstants.textMuted,
-                ),
-              ),
-              SizedBox(height: _sh(2)),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  sub,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: _sp(11),
-                    fontWeight: FontWeight.w500,
-                    color: ColorConstants.textMuted,
+                SizedBox(width: _sw(14)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: _sp(14.5),
+                          fontWeight: FontWeight.w700,
+                          color:
+                              enabled
+                                  ? ColorConstants.textDark
+                                  : ColorConstants.textMuted,
+                        ),
+                      ),
+                      SizedBox(height: _sh(3)),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: _sp(12),
+                          fontWeight: FontWeight.w500,
+                          color: ColorConstants.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                SizedBox(width: _sw(8)),
+                Container(
+                  width: _sw(32),
+                  height: _sw(32),
+                  decoration: BoxDecoration(
+                    color:
+                        enabled
+                            ? ColorConstants.primarySoft
+                            : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: _sp(14),
+                    color: fg,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

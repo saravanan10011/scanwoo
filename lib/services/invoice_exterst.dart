@@ -42,7 +42,7 @@ class InvoiceExtractionService {
     });
     if (best != null) return best;
 
-    // 2. The symbol was lost or misread by OCR (₹ -> "¿", "?", "E"):
+    // 2. The symbol was lost or misread by OCR (₹ -> "¿", "?", "E", "F", "{"):
     //    use country hints from the text instead.
     if (count(
           r'\bGSTIN?\b|\bCGST\b|\bSGST\b|\bIGST\b|\bCHENNAI\b|\bMUMBAI\b|\bDELHI\b|\bBANGALORE\b|\bBENGALURU\b|\bHYDERABAD\b|\bTAMIL\s*NADU\b|\bINDIA\b',
@@ -115,17 +115,43 @@ class InvoiceExtractionService {
             .where((l) => l.isNotEmpty)
             .toList();
 
-    double? net = _extractAmount(lines, _netLabels);
-    double? vat = _extractAmount(lines, _vatLabels, isVat: true);
+    // NEW: rupee invoices use whole-number amounts (no decimals).
+    final rupee = detectCurrency(text) == '₹';
+
+    double? net = _extractAmount(lines, _netLabels, rupee: rupee);
+    double? vat = _extractAmount(lines, _vatLabels, isVat: true, rupee: rupee);
     double? gross = _extractAmount(
       lines,
       _grossLabels,
       fromBottom: true,
       strictTotal: true,
+      rupee: rupee,
     );
     if (gross != null && gross <= 0) gross = null;
 
-    final allAmounts = lines.expand(_parseAmounts).toList();
+    // NEW: "Subtotal" + "Discount" and a "Total" line with no value.
+    if (gross == null && net != null) {
+      final disc = _extractAmount(lines, const ['Discount'], rupee: rupee);
+      if (disc != null && disc > 0 && disc < net) net = _r2(net - disc);
+    }
+
+    // NEW: shop receipts print "Net Amount" as the payable total and have no
+    // separate VAT line -> gross = net (do not guess from other numbers).
+    if (rupee && gross == null && net != null && vat == null) {
+      gross = net;
+    }
+
+    // NEW: ignore payment lines (cash given, change, card, UPI ...) so the
+    // inference below never picks "Cash Amount : 100.00" as the total.
+    final paymentLine = RegExp(
+      r'cash|card|upi|sodexo|credit|balance|change|tender|loyalty|saved|round',
+      caseSensitive: false,
+    );
+    final allAmounts =
+        lines
+            .where((l) => !paymentLine.hasMatch(l))
+            .expand(_parseAmounts)
+            .toList();
     bool close(double a, double b) => (a - b).abs() <= 0.02;
 
     // Nothing usable found by label: infer the total from the numbers.
@@ -159,6 +185,11 @@ class InvoiceExtractionService {
       vat = _r2(gross - net);
     }
 
+    // NEW: no VAT/GST line (e.g. Indian invoices): total = net.
+    if (rupee && gross == null && net != null) {
+      gross = _r2(net + (vat ?? 0));
+    }
+
     return {
       'supplier': _extractSupplier(lines),
       'vat_number': _extractVatNumber(lines, text),
@@ -172,7 +203,7 @@ class InvoiceExtractionService {
       'zr': 0,
       'exempt': 0,
       'payment': _extractPaymentTerm(text),
-      'currency': detectCurrency(text) ?? '£', // NEW
+      'currency': detectCurrency(text) ?? '£',
       'extraction_method': 'ai',
       'ocr_status': 'complete',
       'status': 'pending',
@@ -360,6 +391,7 @@ class InvoiceExtractionService {
   static String? _extractInvoiceNo(List<String> lines) {
     final labelPatterns = [
       r'Invoice\s*(?:No\.?|Number|Num\.?|#|Ref\.?)',
+      r'\bI\w{1,5}ce\s*No\.?', // NEW: OCR-damaged "Ivofce No.", "Involce No."
       r'Inv\.?\s*(?:No\.?|#)',
       r'Bill(?:ing)?\s*No\.?',
       r'Document\s*No\.?',
@@ -392,7 +424,7 @@ class InvoiceExtractionService {
       final regex = RegExp(labelPatterns[p], caseSensitive: false);
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i];
-        if (p >= 2 && otherNumberLine.hasMatch(line)) continue;
+        if (p >= 3 && otherNumberLine.hasMatch(line)) continue;
 
         final m = regex.firstMatch(line);
         if (m == null) continue;
@@ -455,10 +487,14 @@ class InvoiceExtractionService {
       caseSensitive: false,
     );
     final codeLike = RegExp(r'^[A-Za-z]?\d{2,8}$');
+    // CHANGED: "Invoice Details" (right-hand column header) is not a name.
     bool bad(String v) =>
         v.isEmpty ||
         codeLike.hasMatch(v) ||
-        RegExp(r'^(Ship|Deliver|Phone|Tel)', caseSensitive: false).hasMatch(v);
+        RegExp(
+          r'^(Ship|Deliver|Phone|Tel|Invoice\s*Details?)',
+          caseSensitive: false,
+        ).hasMatch(v);
 
     for (var i = 0; i < lines.length; i++) {
       final match = regex.firstMatch(lines[i]);
@@ -587,18 +623,17 @@ class InvoiceExtractionService {
     bool fromBottom = false,
     bool isVat = false,
     bool strictTotal = false,
+    bool rupee = false, // NEW: whole-number currency (₹)
   }) {
     final vatIdLine = RegExp(
       r'V\.?A\.?T\.?\s*(?:Reg|No|Number|#)',
       caseSensitive: false,
     );
-    // Column-header rows such as "ITEM No. DESCRIPTION | UNIT PRICE | VAT RATE"
-    // must never be read as the VAT amount line.
+
     final vatHeaderLine = RegExp(
       r'vat\s*rate|unit\s*price|description|\bqty\b|item\s*no',
       caseSensitive: false,
     );
-    // "(EXC. VAT)" / "INC VAT" must never be read as the VAT amount line.
     final vatBadPrefix = RegExp(
       r'(exc|excl|excluding|ex|inc|incl|including)[.,]?\s*\(?\s*$',
       caseSensitive: false,
@@ -607,6 +642,7 @@ class InvoiceExtractionService {
       r'(sub|net|vat|v\.a\.t\.?|goods)\s*[-.]?\s*$',
       caseSensitive: false,
     );
+
     final badSuffix = RegExp(
       r'^\s*(vat|v\.a\.t|net|goods|items|qty|quantity|weight|lines)',
       caseSensitive: false,
@@ -659,15 +695,35 @@ class InvoiceExtractionService {
         }
         if (amounts.isNotEmpty) return amounts.last;
 
-        // Last resort: bare digits with no decimal point (5790 -> 57.90),
-        // only when the rest of the line is just that number.
+        // Last resort: amounts with no decimal point, only when the rest of
+        // the line is just that number.
         if (_isAmountOnly(rest)) {
+          final fixed = _fixNumericTokens(rest);
+
+          // NEW: thousands separator, no decimals ("F1,062", "{1,061")
+          // -> whole amount. "F" / "{" are OCR misreads of ₹ and are ignored.
+          final comma = RegExp(
+            r'(?<![\d.,])(\d{1,3}(?:,\d{3})+)(?![\d,]|\.\d)',
+          ).firstMatch(fixed);
+          if (comma != null) {
+            final v = double.tryParse(comma.group(1)!.replaceAll(',', ''));
+            if (v != null) return v;
+          }
+
+          // Bare digits (5790 -> 57.90). Rupee amounts are whole numbers.
           final raw = RegExp(
-            r'(?<![\d.,])(\d{3,6})(?![\d.,])',
-          ).firstMatch(_fixNumericTokens(rest));
+            rupee
+                ? r'(?<![\d.,])(\d{1,7})(?![\d.,])'
+                : r'(?<![\d.,])(\d{3,6})(?![\d.,])',
+          ).firstMatch(fixed);
           if (raw != null) {
             final v = int.tryParse(raw.group(1)!);
-            if (v != null) return v / 100.0;
+            if (v != null) {
+              final isRupee =
+                  rupee ||
+                  RegExp(r'₹|Rs\.?|INR', caseSensitive: false).hasMatch(rest);
+              return isRupee ? v.toDouble() : v / 100.0;
+            }
           }
         }
       }

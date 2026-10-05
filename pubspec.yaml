@@ -40,7 +40,7 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
   pdf: ^3.11.3
-  file_picker: ^10.0.0
+  file_picker: ^8.0.0
   image_cropper: ^12.2.1
   # shared_preferences: ^2.5.5
   http: ^1.6.0
@@ -53,7 +53,9 @@ dependencies:
   csv: ^8.0.0
   image: ^4.3.0
   mime: ^2.1.0
-image_cropper: ^12.2.1
+  pdfx: ^2.6.0
+  intl: ^0.20.3
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

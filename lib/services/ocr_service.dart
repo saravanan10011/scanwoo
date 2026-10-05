@@ -11,7 +11,7 @@ class NoTextFoundException implements Exception {
   const NoTextFoundException(this.page);
 
   String get message =>
-      'No text could be read from page $page. Please retake the photo '
+      'No text could be read from page $page. Please retake the photo'
       ' and try again.';
 
   @override

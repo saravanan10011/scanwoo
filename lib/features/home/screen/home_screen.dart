@@ -268,7 +268,7 @@ class HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 12),
 
                   InkWell(
-                    onTap: () => goToTab(3),
+                    onTap: () => goToTab(2),
                     borderRadius: BorderRadius.circular(24),
                     child: Container(
                       width: 46,

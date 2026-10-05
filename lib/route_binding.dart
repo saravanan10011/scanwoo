@@ -15,7 +15,6 @@ import 'package:quick_scanner/features/profile/change_password.dart';
 import 'package:quick_scanner/features/profile/logic/profile_controller.dart';
 import 'package:quick_scanner/features/scan_document/logic/scannercontroller.dart';
 import 'package:quick_scanner/features/scan_document/screens/crop_screen.dart';
-import 'package:quick_scanner/features/scan_document/screens/multi_doc_screen.dart';
 import 'package:quick_scanner/features/scan_document/screens/preview_screen.dart';
 import 'package:quick_scanner/features/scan_document/screens/processing_screen.dart';
 import 'package:quick_scanner/features/scan_document/screens/scanner_screen.dart';
@@ -107,17 +106,6 @@ class Routes {
             onProcess:
                 _args['onProcess']
                     as Future<List<String>> Function(List<String> paths),
-          ),
-    ),
-    GetPage(
-      name: RouteList.multiDocResult,
-      page:
-          () => MultiDocumentResultScreen(
-            images: (_args['images'] as List).cast<File>(),
-            extractedTexts: (_args['extractedTexts'] as List).cast<String>(),
-            extractedDataList:
-                (_args['extractedDataList'] as List?)
-                    ?.cast<Map<String, dynamic>>(),
           ),
     ),
     GetPage(

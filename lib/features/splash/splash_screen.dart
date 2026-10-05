@@ -51,18 +51,28 @@ class SplashScreenState extends State<SplashScreen>
   }
 
   void navigateToNextScreen() async {
-    debugPrint("Pending Deep Link => ${DeepLinkService.pendingDeepLink}");
-
-    if (DeepLinkService.pendingDeepLink != null) {
-      debugPrint("🔥 Deep link detected, handling it");
-
-      DeepLinkService.handlePendingDeepLink();
+    if (DeepLinkService.hasPending) {
+      debugPrint("Deep link detected, handling it");
+      DeepLinkService.markReady(); // handles the pending link and navigates
       return;
     }
 
-    debugPrint("➡️ No deep link, go Login/Home");
     await checkLogin();
+    DeepLinkService.markReady(); // from now on, links are handled immediately
   }
+  // void navigateToNextScreen() async {
+  //   debugPrint("Pending Deep Link => ${DeepLinkService.pendingDeepLink}");
+
+  //   if (DeepLinkService.pendingDeepLink != null) {
+  //     debugPrint("🔥 Deep link detected, handling it");
+
+  //     DeepLinkService.handlePendingDeepLink();
+  //     return;
+  //   }
+
+  //   debugPrint("➡️ No deep link, go Login/Home");
+  //   await checkLogin();
+  // }
 
   Future<void> checkLogin() async {
     // final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;

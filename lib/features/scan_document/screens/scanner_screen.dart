@@ -10,6 +10,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:quick_scanner/features/scan_document/logic/scannercontroller.dart';
 import 'package:quick_scanner/services/invoice_exterst.dart';
 import '../../../services/ocr_service.dart';
+import '../../../services/pdf_import_service.dart';
+import '../../../services/scan_history_service.dart';
+import '../../../services/models/scan_record.dart';
+import '../../../networks/data_service.dart';
+import '../repositiores/historyrepository.dart';
 import 'package:mime/mime.dart';
 
 const _primary = Color(0xFF4038D8);
@@ -90,51 +95,94 @@ class ScannerScreenController extends GetxController {
   }
 
   Future<void> gallery() async {
-    final files = await picker.pickMultiImage(imageQuality: 85);
+    if (isProcessing.value) return;
 
-    if (files.isEmpty || isClosed) return;
+    // Images and PDFs can be mixed in one selection.
+    final paths = await PdfImportService.pickImageOrPdfPaths();
+
+    if (paths.isEmpty || isClosed) return;
 
     bool hasUnsupportedFile = false;
+    String? pdfError;
 
-    for (final file in files) {
+    for (final path in paths) {
       if (isClosed) return;
 
-      // print('------------------------------');
-      // print('Selected file: ${file.path}');
-      // print('File name: ${file.name}');
-      // print('File extension: ${file.path.split('.').last}');
-      // print('MIME type: ${lookupMimeType(file.path)}');
-
-      if (!isSupportedImage(file.path)) {
-        hasUnsupportedFile = true;
-
-        // print('❌ Unsupported image: ${file.name}');
+      // PDF: every page becomes an image (no crop step), same as the PDF card.
+      if (PdfImportService.isPdf(path)) {
+        isProcessing.value = true;
+        try {
+          images.addAll(await PdfImportService.renderPages(path));
+        } on PdfImportException catch (e) {
+          pdfError = e.message;
+        } catch (_) {
+          pdfError = 'Could not read this PDF.';
+        } finally {
+          if (!isClosed) isProcessing.value = false;
+        }
         continue;
       }
 
-      // print('✅ Supported image: ${file.name}');
+      if (!isSupportedImage(path)) {
+        hasUnsupportedFile = true;
+        continue;
+      }
 
       final File? croppedImage = await Get.toNamed<dynamic>(
         RouteList.cropAdjust,
-        arguments: {'image': File(file.path)},
+        arguments: {'image': File(path)},
       );
-      if (Get.isRegistered<CropAdjustController>(tag: file.path)) {
-        Get.delete<CropAdjustController>(tag: file.path, force: true);
+      if (Get.isRegistered<CropAdjustController>(tag: path)) {
+        Get.delete<CropAdjustController>(tag: path, force: true);
       }
       if (croppedImage == null || isClosed) continue;
 
       images.add(croppedImage);
     }
 
-    if (hasUnsupportedFile && !isClosed) {
-      _showNoTextAlert(
-        title: 'Unsupported image',
-        message: 'Only JPG, PNG, and WEBP images are supported.',
+    if (isClosed) return;
+
+    if (pdfError != null) {
+      await _showNoTextAlert(title: 'PDF not supported', message: pdfError);
+    } else if (hasUnsupportedFile) {
+      await _showNoTextAlert(
+        title: 'Unsupported file',
+        message: 'Only JPG, PNG, WEBP images and PDF files are supported.',
       );
     }
 
     if (images.isNotEmpty && !isClosed) {
       _selectLast();
+    }
+  }
+
+  Future<void> pickPdf() async {
+    if (isProcessing.value) return;
+
+    final paths = await PdfImportService.pickPdfPaths();
+    if (paths.isEmpty || isClosed) return;
+
+    isProcessing.value = true;
+    try {
+      for (final path in paths) {
+        if (isClosed) return;
+        final pages = await PdfImportService.renderPages(path);
+        images.addAll(pages);
+      }
+      if (images.isNotEmpty) _selectLast();
+    } on PdfImportException catch (e) {
+      if (!isClosed) {
+        _showNoTextAlert(title: 'PDF not supported', message: e.message);
+      }
+    } catch (e) {
+      if (!isClosed) {
+        _showNoTextAlert(
+          title: 'PDF not supported',
+          message: 'Could not read this PDF.',
+        );
+      }
+    } finally {
+      if (!isClosed) isProcessing.value = false;
     }
   }
 
@@ -243,18 +291,22 @@ class ScannerScreenController extends GetxController {
     );
   }
 
+  /// OCR every page, send it straight to the backend, then show the saved
+  /// result. There is no separate "extracted text" review screen.
   Future<void> process() async {
     if (images.isEmpty || isProcessing.value) return;
 
     isProcessing.value = true;
 
     try {
-      final extractedDataList = <Map<String, dynamic>>[];
+      final imagesCopy = List<File>.from(images);
+      final textsOut = <String>[];
+      final dataOut = <Map<String, dynamic>>[];
 
-      final List<String>? texts = await Get.toNamed<dynamic>(
+      final dynamic done = await Get.toNamed<dynamic>(
         RouteList.processing,
         arguments: {
-          'imagePaths': images.map((file) => file.path).toList(),
+          'imagePaths': imagesCopy.map((file) => file.path).toList(),
           'onProcess': (List<String> paths) async {
             final results = List<String>.filled(paths.length, '');
             final dataList = List<Map<String, dynamic>>.filled(
@@ -286,31 +338,48 @@ class ScannerScreenController extends GetxController {
 
             if (emptyPage != null) throw NoTextFoundException(emptyPage!);
 
-            extractedDataList
-              ..clear()
-              ..addAll(dataList);
+            // Submit to the backend while the processing screen is still up.
+            await HistoryRepository().uploadInvoicesIndividually(
+              token: Get.find<TokenDataServiceImp>().accessToken,
+              images: imagesCopy,
+              extractedDataList: results,
+              fieldsList: dataList,
+            );
+
+            textsOut.addAll(results);
+            dataOut.addAll(dataList);
             return results;
           },
         },
       );
 
       if (isClosed) return;
-
       isProcessing.value = false;
 
-      if (texts == null) return;
+      // null = OCR failed / no text (the user was already told why).
+      if (done == null || textsOut.isEmpty) return;
 
-      final imagesCopy = List<File>.from(images);
-      final textsCopy = List<String>.from(texts);
-      final dataCopy = List<Map<String, dynamic>>.from(extractedDataList);
+      // Keep a local history copy, same as the old review screen did.
+      final saved = <ScanRecord>[];
+      for (var i = 0; i < imagesCopy.length; i++) {
+        await ScanHistoryService.addRecord(
+          text: textsOut[i],
+          imageFile: imagesCopy[i],
+          extractedData: dataOut[i],
+        );
+      }
+      final all = ScanHistoryService.recordsNotifier.value;
+      // addRecord inserts at index 0, so the newest batch is at the front.
+      saved.addAll(all.take(imagesCopy.length).toList().reversed);
 
-      Get.toNamed(
-        RouteList.multiDocResult,
-        arguments: {
-          'images': imagesCopy,
-          'extractedTexts': textsCopy,
-          'extractedDataList': dataCopy,
-        },
+      images.clear();
+      selectedImage.value = 0;
+
+      if (saved.isEmpty) return;
+      Get.offNamedUntil(
+        RouteList.scanPreview,
+        (route) => route.isFirst,
+        arguments: {'record': saved.first},
       );
     } catch (e) {
       if (isClosed) return;
@@ -407,8 +476,15 @@ class ScannerScreen extends StatelessWidget {
                           _actionCard(
                             Icons.photo_library_outlined,
                             'Gallery',
-                            'Select multiple',
+                            'Images or PDF',
                             c.isProcessing.value ? null : c.gallery,
+                          ),
+                          SizedBox(width: Sizes.w(12)),
+                          _actionCard(
+                            Icons.picture_as_pdf_outlined,
+                            'PDF',
+                            'Pick file',
+                            c.isProcessing.value ? null : c.pickPdf,
                           ),
                         ],
                       ),
@@ -569,7 +645,7 @@ class ScannerScreen extends StatelessWidget {
                               ),
                               SizedBox(height: Sizes.h(6)),
                               Text(
-                                'Use your camera or gallery to upload',
+                                'Use your camera, gallery or a PDF to upload',
                                 style: TextStyle(
                                   color: _textMuted,
                                   fontSize: Sizes.sp(12),

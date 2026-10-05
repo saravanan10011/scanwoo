@@ -15,7 +15,6 @@ String recordText(String? v) {
   return (t.isEmpty || t == '—' || t == '-') ? 'N/A' : t;
 }
 
-/// Invoice date from the invoice itself; falls back to the upload date.
 String recordDate(ScanRecord r) {
   final d = (r.date ?? '').trim();
   return d.isNotEmpty ? d : formatShortDate(r.createdAt.toLocal());

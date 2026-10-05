@@ -4,7 +4,6 @@ import 'package:quick_scanner/features/history/logic/history_controller.dart';
 import 'package:quick_scanner/features/history/screens/history_screen.dart';
 import 'package:quick_scanner/features/home/screen/home_screen.dart';
 import 'package:quick_scanner/features/profile/profile.dart';
-import 'package:quick_scanner/features/scan_document/screens/exportscreen.dart';
 import '../../widgets/bottomnav.dart';
 
 class MainController extends GetxController {
@@ -36,7 +35,7 @@ class MainScreen extends StatelessWidget {
     final screens = <Widget>[
       HomeScreen(onNavigateToTab: c.onNavTap),
       ScanHistoryScreen(onBack: () => c.onNavTap(0)),
-      ExportScreen(),
+      // ExportScreen(),
       const ProfileScreen(),
     ];
 

@@ -475,8 +475,9 @@ class HistoryController extends GetxController {
             .toList();
     final f = filter.value;
 
-    bool inRange(DateTime uploaded) {
-      final d = uploaded.toLocal();
+    bool inRange(DateTime toUkTime) {
+      // final d = uploaded.toLocal();
+      final d = toUkTime;
       final day = DateTime.utc(d.year, d.month, d.day);
       final diff = today.difference(day).inDays; // whole calendar days
       switch (f) {

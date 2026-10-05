@@ -83,7 +83,6 @@ Future<void> _showNoTextAlert({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon badge with soft halo
             Container(
               padding: EdgeInsets.all(_sw(10)),
               decoration: BoxDecoration(
@@ -197,7 +196,7 @@ class ProcessingScreen extends StatelessWidget {
                 ),
                 SizedBox(height: Sizes.h(12)),
                 Text(
-                  'Extracting text using OCR',
+                  'Reading text and uploading',
                   style: TextStyle(
                     color: ColorConstants.white70,
                     fontSize: Sizes.sp(14),

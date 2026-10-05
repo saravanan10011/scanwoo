@@ -16,11 +16,11 @@ class CommonBottomNav extends StatelessWidget {
   static const _items = [
     (icon: Icons.home_outlined, active: Icons.home, label: 'Home'),
     (icon: Icons.history_outlined, active: Icons.history, label: 'History'),
-    (
-      icon: Icons.file_upload_outlined,
-      active: Icons.file_upload,
-      label: 'Export',
-    ),
+    // (
+    //   icon: Icons.file_upload_outlined,
+    //   active: Icons.file_upload,
+    //   label: 'Export',
+    // ),
     (icon: Icons.person_outline, active: Icons.person, label: 'Profile'),
   ];
 

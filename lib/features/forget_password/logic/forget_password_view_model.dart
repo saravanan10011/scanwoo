@@ -35,7 +35,6 @@ class ForgetPasswordViewModel extends GetxController {
     debugPrint("TOKEN => ${token.value}");
   }
 
-  // final RxBool isLoading = false.obs;
   Future<void> clientForgetPassword() async {
     try {
       isLoading.value = true;

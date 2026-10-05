@@ -1,15 +1,11 @@
-import 'package:quick_scanner/utils/common_color.dart';
-import 'package:quick_scanner/routes_list.dart';
-import 'package:quick_scanner/utils/common_size.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:quick_scanner/widgets/exportsheet.dart';
+import 'package:quick_scanner/utils/common_color.dart';
+import 'package:quick_scanner/utils/common_size.dart';
 
 import '../../../services/models/scan_record.dart';
-import '../../../services/scan_history_service.dart';
 
 // Same 375x812 baseline scaling used across the app's other screens.
 
@@ -30,11 +26,9 @@ class _Space {
   static double get md => Sizes.w(16);
   static double get lg => Sizes.w(20);
   static double get xl => Sizes.w(28);
-  static double get xxl => Sizes.w(36);
 }
 
 class _Radius {
-  static double get sm => Sizes.w(10);
   static double get md => Sizes.w(14);
   static double get lg => Sizes.w(18);
   static double get xl => Sizes.w(24);
@@ -57,6 +51,14 @@ TextStyle _type({
   );
 }
 
+List<BoxShadow> get _softShadow => [
+  BoxShadow(
+    color: _Palette.ink.withValues(alpha: 0.06),
+    blurRadius: 20,
+    offset: const Offset(0, 8),
+  ),
+];
+
 // -----------------------------------------------------------------------
 // Controller
 // -----------------------------------------------------------------------
@@ -65,72 +67,9 @@ class ScanPreviewController extends GetxController {
   ScanPreviewController(this.initialRecord);
 
   late final Rx<ScanRecord> record = initialRecord.obs;
+  final RxBool textExpanded = false.obs;
 
-  Future<void> openEdit() async {
-    final String? updatedText = await Get.toNamed<dynamic>(
-      RouteList.editRecord,
-      arguments: {'extractedText': record.value.text},
-    );
-
-    if (updatedText == null || updatedText == record.value.text) {
-      return;
-    }
-
-    final records = ScanHistoryService.recordsNotifier.value;
-    final index = records.indexOf(record.value);
-    if (index == -1) return;
-
-    final updatedRecord = ScanRecord(
-      text: updatedText,
-      imagePath: record.value.imagePath,
-      createdAt: record.value.createdAt,
-    );
-
-    await ScanHistoryService.updateRecord(index, updatedRecord);
-
-    record.value = updatedRecord;
-    toast('Record updated', success: true);
-  }
-
-  void copyText() {
-    if (record.value.text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: record.value.text));
-    HapticFeedback.lightImpact();
-  }
-
-  void toast(String message, {bool success = false}) {
-    Get.snackbar(
-      '',
-      '',
-      titleText: const SizedBox.shrink(),
-      messageText: Row(
-        children: [
-          Icon(
-            success ? Icons.check_circle_rounded : Icons.info_rounded,
-            color: ColorConstants.white,
-            size: Sizes.w(18),
-          ),
-          SizedBox(width: _Space.sm),
-          Expanded(
-            child: Text(
-              message,
-              style: _type(
-                size: 14,
-                weight: FontWeight.w600,
-                color: ColorConstants.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: _Palette.ink,
-      borderRadius: _Radius.md,
-      margin: EdgeInsets.all(_Space.md),
-      padding: EdgeInsets.symmetric(horizontal: _Space.lg, vertical: _Space.md),
-      duration: const Duration(seconds: 2),
-    );
-  }
+  void toggleExpanded() => textExpanded.toggle();
 
   void openFullImage(File file) {
     Get.dialog(
@@ -192,11 +131,13 @@ class ScanPreviewScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: _Palette.background,
-      appBar: _ScanAppBar(onEdit: c.openEdit),
+      appBar: const _ScanAppBar(),
+      bottomNavigationBar: _SaveBar(onSave: Get.back),
       body: Obx(() {
         final rec = c.record.value;
         final imageFile = File(rec.imagePath);
         final hasImage = imageFile.existsSync();
+        final empty = rec.text.trim().isEmpty;
 
         return ListView(
           physics: const BouncingScrollPhysics(),
@@ -204,21 +145,22 @@ class ScanPreviewScreen extends StatelessWidget {
             _Space.lg,
             _Space.md,
             _Space.lg,
-            _Space.xxl,
+            _Space.xl,
           ),
           children: [
             _ImageCard(
               file: imageFile,
               hasImage: hasImage,
+              empty: empty,
               onTap: () => c.openFullImage(imageFile),
             ),
             SizedBox(height: _Space.md),
             _MetaStrip(record: rec),
-            _TextCard(record: rec, onCopy: c.copyText),
-            SizedBox(height: _Space.xl),
-            _ActionBar(
-              onEdit: c.openEdit,
-              onExport: () => showExportSheet(context, [rec]),
+            SizedBox(height: _Space.md),
+            _TextCard(
+              text: rec.text,
+              expanded: c.textExpanded.value,
+              onToggle: c.toggleExpanded,
             ),
           ],
         );
@@ -227,47 +169,33 @@ class ScanPreviewScreen extends StatelessWidget {
   }
 }
 
+// -----------------------------------------------------------------------
+// App bar
+// -----------------------------------------------------------------------
 class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final VoidCallback onEdit;
-
-  const _ScanAppBar({required this.onEdit});
+  const _ScanAppBar();
 
   @override
   Widget build(BuildContext context) {
-    // ───────────────── Responsive helpers (375 x 812 baseline) ─────────────────
-    double sw(double v) => Get.width / 375 * v;
-
-    /// Font / icon scaling: follows width but is clamped so tablets don't get giant text.
-    double sp(double v) => v * (Get.width / 375).clamp(0.85, 1.3);
     return AppBar(
       backgroundColor: _Palette.primary,
       surfaceTintColor: ColorConstants.transparent,
-      scrolledUnderElevation: 1,
-      shadowColor: _Palette.ink.withValues(alpha: 0.08),
       elevation: 0,
-      centerTitle: false,
-      titleSpacing: 0,
-      leading: InkWell(
-        // customBorder: const CircleBorder(),
-        onTap: () {
-          Get.back();
-        },
-        child: SizedBox(
-          width: sw(40),
-          height: sw(40),
-          child: Icon(
-            Icons.arrow_back_ios,
-            size: sp(17),
-            color: ColorConstants.white,
-          ),
+      centerTitle: true,
+      leading: IconButton(
+        onPressed: Get.back,
+        icon: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: Sizes.w(18),
+          color: ColorConstants.white,
         ),
       ),
       title: Text(
         'Scan preview',
         style: _type(
           size: 17,
-          color: _Palette.background,
           weight: FontWeight.w700,
+          color: ColorConstants.white,
         ),
       ),
     );
@@ -277,6 +205,9 @@ class _ScanAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
+// -----------------------------------------------------------------------
+// Status chip
+// -----------------------------------------------------------------------
 class _StatusChip extends StatelessWidget {
   final bool empty;
 
@@ -287,7 +218,7 @@ class _StatusChip extends StatelessWidget {
     final dotColor = empty ? _Palette.mutedSoft : _Palette.accent;
     final bg = empty ? _Palette.background : ColorConstants.successSoft;
     final fg = empty ? _Palette.muted : ColorConstants.success2;
-    final label = empty ? 'Empty' : 'Text detected';
+    final label = empty ? 'No text' : 'Text detected';
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -309,7 +240,7 @@ class _StatusChip extends StatelessWidget {
           SizedBox(width: Sizes.w(6)),
           Text(
             label,
-            style: _type(size: 12, weight: FontWeight.w600, color: fg),
+            style: _type(size: 12, weight: FontWeight.w700, color: fg),
           ),
         ],
       ),
@@ -323,11 +254,13 @@ class _StatusChip extends StatelessWidget {
 class _ImageCard extends StatelessWidget {
   final File file;
   final bool hasImage;
+  final bool empty;
   final VoidCallback onTap;
 
   const _ImageCard({
     required this.file,
     required this.hasImage,
+    required this.empty,
     required this.onTap,
   });
 
@@ -363,27 +296,33 @@ class _ImageCard extends StatelessWidget {
             child: Image.file(
               file,
               width: double.infinity,
-              height: Sizes.h(240),
+              height: Sizes.h(260),
               fit: BoxFit.cover,
             ),
           ),
+          // Top fade so the status chip stays readable on any photo.
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
-            height: Sizes.h(72),
+            top: 0,
+            height: Sizes.h(64),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
+                    ColorConstants.black.withValues(alpha: 0.35),
                     ColorConstants.transparent,
-                    ColorConstants.black.withValues(alpha: 0.5),
                   ],
                 ),
               ),
             ),
+          ),
+          Positioned(
+            left: Sizes.w(12),
+            top: Sizes.w(12),
+            child: _StatusChip(empty: empty),
           ),
           Positioned(
             right: Sizes.w(12),
@@ -394,7 +333,7 @@ class _ImageCard extends StatelessWidget {
                 vertical: Sizes.w(7),
               ),
               decoration: BoxDecoration(
-                color: ColorConstants.black.withValues(alpha: 0.5),
+                color: ColorConstants.black.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(_Radius.pill),
                 border: Border.all(
                   color: ColorConstants.white.withValues(alpha: 0.2),
@@ -477,43 +416,33 @@ class _MetaStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final words =
-        record.text.trim().isEmpty
-            ? 0
-            : record.text.trim().split(RegExp(r'\s+')).length;
-    final empty = record.text.trim().isEmpty;
+    final trimmed = record.text.trim();
+    final words = trimmed.isEmpty ? 0 : trimmed.split(RegExp(r'\s+')).length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: _StatusChip(empty: empty),
+        Expanded(
+          child: _MetaPill(
+            icon: Icons.calendar_today_rounded,
+            value: _formatDate(record.createdAt),
+            caption: 'Date',
+          ),
         ),
-        SizedBox(height: _Space.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _MetaPill(
-                icon: Icons.calendar_today_rounded,
-                label: _formatDate(record.createdAt),
-              ),
-            ),
-            SizedBox(width: _Space.sm),
-            Expanded(
-              child: _MetaPill(
-                icon: Icons.schedule_rounded,
-                label: _formatTime(record.createdAt),
-              ),
-            ),
-            SizedBox(width: _Space.sm),
-            Expanded(
-              child: _MetaPill(
-                icon: Icons.notes_rounded,
-                label: '$words words',
-              ),
-            ),
-          ],
+        SizedBox(width: _Space.sm),
+        Expanded(
+          child: _MetaPill(
+            icon: Icons.schedule_rounded,
+            value: _formatTime(record.createdAt),
+            caption: 'Time',
+          ),
+        ),
+        SizedBox(width: _Space.sm),
+        Expanded(
+          child: _MetaPill(
+            icon: Icons.notes_rounded,
+            value: '$words',
+            caption: words == 1 ? 'Word' : 'Words',
+          ),
         ),
       ],
     );
@@ -522,32 +451,54 @@ class _MetaStrip extends StatelessWidget {
 
 class _MetaPill extends StatelessWidget {
   final IconData icon;
-  final String label;
+  final String value;
+  final String caption;
 
-  const _MetaPill({required this.icon, required this.label});
+  const _MetaPill({
+    required this.icon,
+    required this.value,
+    required this.caption,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: Sizes.w(12)),
+      padding: EdgeInsets.symmetric(
+        vertical: Sizes.w(12),
+        horizontal: Sizes.w(6),
+      ),
       decoration: BoxDecoration(
         color: _Palette.surface,
         borderRadius: BorderRadius.circular(_Radius.md),
         border: Border.all(color: _Palette.line),
+        boxShadow: _softShadow,
       ),
       child: Column(
         children: [
-          Icon(icon, size: Sizes.w(17), color: _Palette.primary),
-          SizedBox(height: Sizes.w(5)),
+          Container(
+            height: Sizes.w(30),
+            width: Sizes.w(30),
+            decoration: const BoxDecoration(
+              color: _Palette.primarySoft,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: Sizes.w(15), color: _Palette.primary),
+          ),
+          SizedBox(height: Sizes.w(8)),
           Text(
-            label,
+            value,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            style: _type(size: 13, weight: FontWeight.w700),
+          ),
+          SizedBox(height: Sizes.w(2)),
+          Text(
+            caption,
             style: _type(
-              size: 11.5,
-              weight: FontWeight.w600,
-              color: _Palette.muted,
+              size: 11,
+              weight: FontWeight.w500,
+              color: _Palette.mutedSoft,
             ),
           ),
         ],
@@ -560,31 +511,32 @@ class _MetaPill extends StatelessWidget {
 // Extracted text card
 // -----------------------------------------------------------------------
 class _TextCard extends StatelessWidget {
-  final ScanRecord record;
-  final VoidCallback onCopy;
+  final String text;
+  final bool expanded;
+  final VoidCallback onToggle;
 
-  const _TextCard({required this.record, required this.onCopy});
+  const _TextCard({
+    required this.text,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  static const _collapsedLines = 7;
 
   @override
   Widget build(BuildContext context) {
-    final empty = record.text.trim().isEmpty;
-    final chars = record.text.trim().length;
+    final empty = text.trim().isEmpty;
+    final chars = text.trim().length;
+    final isLong = chars > 220;
 
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(top: _Space.lg),
-      padding: EdgeInsets.all(Sizes.w(18)),
+      padding: EdgeInsets.all(Sizes.w(16)),
       decoration: BoxDecoration(
         color: _Palette.surface,
         borderRadius: BorderRadius.circular(_Radius.xl),
         border: Border.all(color: _Palette.line),
-        boxShadow: const [
-          BoxShadow(
-            color: ColorConstants.shadowInk04,
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
+        boxShadow: _softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +563,7 @@ class _TextCard extends StatelessWidget {
                   children: [
                     Text(
                       'Extracted text',
-                      style: _type(size: 16, weight: FontWeight.w700),
+                      style: _type(size: 15.5, weight: FontWeight.w700),
                     ),
                     if (!empty)
                       Text(
@@ -625,57 +577,46 @@ class _TextCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!empty) _CopyButton(onTap: onCopy),
             ],
           ),
           SizedBox(height: _Space.md),
           if (empty)
             const _EmptyTextState()
-          else
-            _FilledText(text: record.text),
-        ],
-      ),
-    );
-  }
-}
-
-class _CopyButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _CopyButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: _Palette.primarySoft,
-      borderRadius: BorderRadius.circular(_Radius.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(_Radius.sm),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: Sizes.w(12),
-            vertical: Sizes.w(9),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.copy_rounded,
-                size: Sizes.w(15),
-                color: _Palette.primary,
-              ),
-              SizedBox(width: Sizes.w(6)),
-              Text(
-                'Copy',
-                style: TextStyle(
-                  fontSize: Sizes.sp(13),
-                  color: _Palette.primary,
-                  fontWeight: FontWeight.w700,
+          else ...[
+            _FilledText(
+              text: text,
+              maxLines: expanded || !isLong ? null : _collapsedLines,
+            ),
+            if (isLong)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onToggle,
+                  style: TextButton.styleFrom(
+                    foregroundColor: _Palette.primary,
+                    padding: EdgeInsets.only(top: Sizes.w(6)),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: Sizes.w(20),
+                  ),
+                  iconAlignment: IconAlignment.end,
+                  label: Text(
+                    expanded ? 'Show less' : 'Show more',
+                    style: _type(
+                      size: 13,
+                      weight: FontWeight.w700,
+                      color: _Palette.primary,
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
+          ],
+        ],
       ),
     );
   }
@@ -687,39 +628,31 @@ class _EmptyTextState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: _Space.lg),
-      child: Column(
-        children: [
-          Container(
-            height: Sizes.w(60),
-            width: Sizes.w(60),
-            decoration: const BoxDecoration(
-              color: _Palette.background,
-              shape: BoxShape.circle,
+      padding: EdgeInsets.symmetric(vertical: _Space.md),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              height: Sizes.w(60),
+              width: Sizes.w(60),
+              decoration: const BoxDecoration(
+                color: _Palette.background,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.text_fields_rounded,
+                size: Sizes.w(28),
+                color: _Palette.mutedSoft,
+              ),
             ),
-            child: Icon(
-              Icons.text_fields_rounded,
-              size: Sizes.w(28),
-              color: _Palette.mutedSoft,
+            SizedBox(height: _Space.md),
+            Text(
+              'No text was found in this scan',
+              textAlign: TextAlign.center,
+              style: _type(size: 14.5, weight: FontWeight.w600),
             ),
-          ),
-          SizedBox(height: _Space.md),
-          Text(
-            'No text was found in this scan',
-            textAlign: TextAlign.center,
-            style: _type(size: 14.5, weight: FontWeight.w600),
-          ),
-          SizedBox(height: Sizes.w(4)),
-          Text(
-            'Edit the record to add text yourself.',
-            textAlign: TextAlign.center,
-            style: _type(
-              size: 13,
-              weight: FontWeight.w400,
-              color: _Palette.muted,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -727,8 +660,9 @@ class _EmptyTextState extends StatelessWidget {
 
 class _FilledText extends StatelessWidget {
   final String text;
+  final int? maxLines;
 
-  const _FilledText({required this.text});
+  const _FilledText({required this.text, this.maxLines});
 
   @override
   Widget build(BuildContext context) {
@@ -741,6 +675,7 @@ class _FilledText extends StatelessWidget {
       ),
       child: SelectableText(
         text,
+        maxLines: maxLines,
         style: _type(
           size: 14.5,
           weight: FontWeight.w400,
@@ -754,67 +689,61 @@ class _FilledText extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------
-// Actions
+// Bottom action bar
 // -----------------------------------------------------------------------
-class _ActionBar extends StatelessWidget {
-  final VoidCallback onEdit;
-  final VoidCallback onExport;
+class _SaveBar extends StatelessWidget {
+  final VoidCallback onSave;
 
-  const _ActionBar({required this.onEdit, required this.onExport});
+  const _SaveBar({required this.onSave});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: Sizes.h(52),
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _Palette.primary,
-                side: const BorderSide(color: _Palette.primary, width: 1.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(_Radius.md),
-                ),
-              ),
-              label: Text(
-                'Save',
-                style: TextStyle(
-                  fontSize: Sizes.sp(15),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              onPressed: () => Get.back(),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: _Palette.surface,
+        border: const Border(top: BorderSide(color: _Palette.line)),
+        boxShadow: [
+          BoxShadow(
+            color: _Palette.ink.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
           ),
-        ),
-        SizedBox(width: _Space.md),
-        Expanded(
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            _Space.lg,
+            _Space.md,
+            _Space.lg,
+            _Space.md,
+          ),
           child: SizedBox(
+            width: double.infinity,
             height: Sizes.h(52),
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _Palette.primary,
                 foregroundColor: ColorConstants.white,
                 elevation: 0,
-                shadowColor: _Palette.primary.withValues(alpha: 0.3),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(_Radius.md),
                 ),
               ),
-              icon: Icon(Icons.ios_share_rounded, size: Sizes.w(18)),
+              // icon: Icon(Icons.check_rounded, size: Sizes.w(20)),
               label: Text(
-                'Export',
+                'Continue',
                 style: TextStyle(
                   fontSize: Sizes.sp(15),
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              onPressed: onExport,
+              onPressed: onSave,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -841,7 +770,10 @@ String _formatDate(DateTime date) =>
     '${date.day} ${_months[date.month - 1]} ${date.year}';
 
 String _formatTime(DateTime date) {
-  final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
-  final min = date.minute.toString().padLeft(2, '0');
-  return '$hour:$min ${date.hour >= 12 ? 'PM' : 'AM'}';
+  final ukTime = date.toUtc().add(const Duration(hours: 1));
+
+  final hour = ukTime.hour % 12 == 0 ? 12 : ukTime.hour % 12;
+  final min = ukTime.minute.toString().padLeft(2, '0');
+
+  return '$hour:$min ${ukTime.hour >= 12 ? 'PM' : 'AM'}';
 }
