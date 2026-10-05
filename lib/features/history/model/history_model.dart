@@ -11,12 +11,13 @@ InvoiceList invoiceListFromJson(String str) =>
 
 String invoiceListToJson(InvoiceList data) => json.encode(data.toJson());
 
-// ───────────────────────── safe parsing helpers ─────────────────────────
+String _s(dynamic v) {
+  final s = v == null ? '' : v.toString().trim();
+  return (s.isEmpty || s == '—' || s == '-' || s.toLowerCase() == 'null')
+      ? 'N/A'
+      : s;
+}
 
-/// Any value -> non-null String ('' when null).
-String _s(dynamic v) => v == null ? '' : v.toString();
-
-/// Any value -> String? (null stays null).
 String? _sn(dynamic v) => v?.toString();
 
 /// num or numeric String -> double (null if not parsable).
@@ -88,6 +89,8 @@ class InvoiceData {
   dynamic zr;
   dynamic exempt;
   Payment payment;
+  String currency; // NEW: "£", "€", "$", "₹" (detected from OCR text)
+
   OcrStatus ocrStatus;
   Status status;
   DateTime uploadedAt;
@@ -111,6 +114,7 @@ class InvoiceData {
     required this.zr,
     required this.exempt,
     required this.payment,
+    this.currency = '£', // NEW
     required this.ocrStatus,
     required this.status,
     required this.uploadedAt,
@@ -120,6 +124,9 @@ class InvoiceData {
     required this.images,
     required this.imagesUnviewedCount,
   });
+
+  /// NEW: e.g. "£505.82" (symbol + thousands separator + 2 decimals)
+  String get grossFormatted => formatMoney(gross, symbol: currency);
 
   factory InvoiceData.fromJson(Map<String, dynamic> json) {
     final images =
@@ -136,6 +143,8 @@ class InvoiceData {
               items: const [],
             );
 
+    final cur = _s(json["currency"]).trim();
+
     return InvoiceData(
       id: _i(json["id"]),
       supplier: _s(json["supplier"]),
@@ -150,6 +159,7 @@ class InvoiceData {
       zr: json["zr"],
       exempt: json["exempt"],
       payment: paymentValues.map[json["payment"]] ?? Payment.EMPTY,
+      currency: cur.isEmpty ? '£' : cur, // NEW
       ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
       status: statusValues.map[json["status"]] ?? Status.UNKNOWN,
       uploadedAt: parseServerTime(
@@ -177,6 +187,7 @@ class InvoiceData {
     "zr": zr,
     "exempt": exempt,
     "payment": paymentValues.reverse[payment],
+    "currency": currency, // NEW
     "ocr_status": ocrStatusValues.reverse[ocrStatus],
     "status": statusValues.reverse[status],
     "uploaded_at": uploadedAt.toUtc().toIso8601String(),
@@ -187,7 +198,6 @@ class InvoiceData {
     "images_unviewed_count": imagesUnviewedCount,
   };
 }
-
 // ─────────────────────────────── Fields ─────────────────────────────────
 
 class Fields {

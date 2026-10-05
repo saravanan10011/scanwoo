@@ -49,8 +49,6 @@ class InvoiceReprocessor {
   /// Returns a copy of [inv] with the extracted values filled in.
   /// id, status, images, uploaded_at, fields etc. are left untouched.
   static Map<String, dynamic> reprocess(Map<String, dynamic> inv) {
-    if (!needsReprocess(inv)) return inv;
-
     var raw = rawTextOf(inv);
     if (raw == null) return inv;
 
@@ -59,10 +57,18 @@ class InvoiceReprocessor {
       raw = raw.replaceAll(r'\n', '\n');
     }
 
-    final extracted = InvoiceExtractionService.extract(raw);
     final out = Map<String, dynamic>.from(inv);
 
+    // Currency is never sent by the backend, so always detect it from the text.
+    out['currency'] = InvoiceExtractionService.detectCurrency(raw) ?? '£';
+
+    // Backend result is fine -> keep it, only the currency was added.
+    if (!needsReprocess(inv)) return out;
+
+    final extracted = InvoiceExtractionService.extract(raw);
+
     for (final key in _fields) {
+      if (key == 'currency') continue; // already set above
       final v = extracted[key];
       if (v == null) continue;
       if (v is num && v == 0) {

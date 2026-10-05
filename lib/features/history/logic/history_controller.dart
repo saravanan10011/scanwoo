@@ -499,7 +499,7 @@ class HistoryController extends GetxController {
             inv.invoiceNo,
             inv.branch,
             inv.date?.toString() ?? '',
-            inv.gross.toString(),
+            inv.grossFormatted.toString(),
             inv.fields.rawText ?? '',
           ].join(' ').toLowerCase();
       return terms.every(hay.contains);

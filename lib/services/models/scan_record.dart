@@ -1,30 +1,3 @@
-// class ScanRecord {
-//   final String text;
-//   final String imagePath;
-//   final DateTime createdAt;
-
-//   ScanRecord({
-//     required this.text,
-//     required this.imagePath,
-//     required this.createdAt,
-//   });
-
-//   Map<String, dynamic> toJson() {
-//     return {
-//       'text': text,
-//       'imagePath': imagePath,
-//       'createdAt': createdAt.toIso8601String(),
-//     };
-//   }
-
-//   factory ScanRecord.fromJson(Map<String, dynamic> json) {
-//     return ScanRecord(
-//       text: json['text'] ?? '',
-//       imagePath: json['imagePath'] ?? '',
-//       createdAt: DateTime.parse(json['createdAt']),
-//     );
-//   }
-// }
 class ScanRecord {
   final String text;
   final String imagePath;
@@ -41,6 +14,7 @@ class ScanRecord {
   final int zr;
   final int exempt;
   final String? payment;
+  final String? currency; // NEW
   final String extractionMethod;
   final String ocrStatus;
   final String status;
@@ -61,6 +35,7 @@ class ScanRecord {
     this.zr = 0,
     this.exempt = 0,
     this.payment,
+    this.currency, // NEW
     this.extractionMethod = 'ai',
     this.ocrStatus = 'complete',
     this.status = 'pending',
@@ -83,6 +58,7 @@ class ScanRecord {
       'zr': zr,
       'exempt': exempt,
       'payment': payment,
+      'currency': currency, // NEW
       'extraction_method': extractionMethod,
       'ocr_status': ocrStatus,
       'status': status,
@@ -106,6 +82,7 @@ class ScanRecord {
       zr: json['zr'] ?? 0,
       exempt: json['exempt'] ?? 0,
       payment: json['payment'],
+      currency: json['currency'], // NEW
       extractionMethod: json['extraction_method'] ?? 'ai',
       ocrStatus: json['ocr_status'] ?? 'complete',
       status: json['status'] ?? 'pending',

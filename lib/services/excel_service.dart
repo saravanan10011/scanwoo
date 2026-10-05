@@ -2,15 +2,31 @@ import 'dart:io';
 
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:quick_scanner/utils/export.dart';
+import 'package:quick_scanner/utils/helper_widget.dart';
+import 'package:quick_scanner/utils/helpers.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'models/scan_record.dart';
 
 class ExcelService {
-  static Future<void> exportAndShareRecords(List<ScanRecord> records) async {
-    final excel = Excel.createExcel();
-    final sheet = excel['Scan Data'];
+  // The symbol is written in each amount cell, so the header is just "Amount".
+  static const _headers = ['Invoice No', 'Supplier', 'Date', 'Amount'];
 
+  /// null / '' / '—' / '-' -> 'N/A'
+  static String _na(String? v) {
+    final t = (v ?? '').trim();
+    return (t.isEmpty || t == '—' || t == '-') ? 'N/A' : t;
+  }
+
+  static Future<void> exportAndShareRecords(List<ScanRecord> input) async {
+    final records = input.map(withInvoiceFields).toList();
+    if (records.isEmpty) {
+      throw Exception('No invoices available to export');
+    }
+
+    final excel = Excel.createExcel();
+    final sheet = excel['Invoices'];
     if (excel.sheets.containsKey('Sheet1') && excel.sheets.length > 1) {
       excel.delete('Sheet1');
     }
@@ -19,57 +35,81 @@ class ExcelService {
       bold: true,
       horizontalAlign: HorizontalAlign.Center,
       verticalAlign: VerticalAlign.Center,
-      textWrapping: TextWrapping.WrapText,
     );
-
-    final fieldStyle = CellStyle(
+    final textStyle = CellStyle(
       horizontalAlign: HorizontalAlign.Left,
       verticalAlign: VerticalAlign.Center,
-      textWrapping: TextWrapping.WrapText,
     );
-
-    final valueStyle = CellStyle(
-      horizontalAlign: HorizontalAlign.Left,
+    final amountStyle = CellStyle(
+      horizontalAlign: HorizontalAlign.Right,
       verticalAlign: VerticalAlign.Center,
-      textWrapping: TextWrapping.WrapText,
+    );
+    final totalStyle = CellStyle(
+      bold: true,
+      horizontalAlign: HorizontalAlign.Right,
+      verticalAlign: VerticalAlign.Center,
     );
 
-    _addCell(sheet, 0, 0, 'Field', headerStyle);
-    _addCell(sheet, 1, 0, 'Value', headerStyle);
+    for (var c = 0; c < _headers.length; c++) {
+      _set(sheet, c, 0, TextCellValue(_headers[c]), headerStyle);
+    }
 
     var row = 1;
-
-    for (final record in records) {
-      final fields = _extractFields(record.text);
-
-      for (final field in fields) {
-        _addCell(sheet, 0, row, field.name, fieldStyle);
-
-        _addCell(sheet, 1, row, field.value, valueStyle);
-
-        row++;
+    final totals = <String, double>{}; // total per currency
+    for (final r in records) {
+      final symbol = r.currency ?? '£';
+      _set(sheet, 0, row, TextCellValue(_na(r.invoiceNo)), textStyle);
+      _set(sheet, 1, row, TextCellValue(_na(r.supplier)), textStyle);
+      _set(sheet, 2, row, TextCellValue(_na(recordDate(r))), textStyle);
+      if ((r.gross ?? 0) != 0) {
+        totals[symbol] = (totals[symbol] ?? 0) + r.gross!;
+        _set(
+          sheet,
+          3,
+          row,
+          TextCellValue(formatMoney(r.gross!, symbol: symbol)),
+          amountStyle,
+        );
+      } else {
+        _set(sheet, 3, row, TextCellValue('N/A'), amountStyle);
       }
+      row++;
+    }
 
-      if (fields.isNotEmpty) {
+    // Never add £ and ₹ together: one total row per currency.
+    if (totals.isEmpty) {
+      _set(sheet, 2, row, TextCellValue('Total'), totalStyle);
+      _set(sheet, 3, row, TextCellValue('N/A'), totalStyle);
+    } else {
+      for (final e in totals.entries) {
+        _set(
+          sheet,
+          2,
+          row,
+          TextCellValue(totals.length == 1 ? 'Total' : 'Total (${e.key})'),
+          totalStyle,
+        );
+        _set(
+          sheet,
+          3,
+          row,
+          TextCellValue(formatMoney(e.value, symbol: e.key)),
+          totalStyle,
+        );
         row++;
       }
     }
 
-    sheet.setColumnWidth(0, 35);
-    sheet.setColumnWidth(1, 70);
-
-    final directory = await getApplicationDocumentsDirectory();
-
-    final file = File(
-      '${directory.path}/scan_${DateTime.now().millisecondsSinceEpoch}.xlsx',
-    );
+    sheet.setColumnWidth(0, 22);
+    sheet.setColumnWidth(1, 36);
+    sheet.setColumnWidth(2, 16);
+    sheet.setColumnWidth(3, 18);
 
     final bytes = excel.encode();
+    if (bytes == null) throw Exception('Unable to create Excel file');
 
-    if (bytes == null) {
-      throw Exception('Unable to create Excel file');
-    }
-
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/Scanwoo_invoices.xlsx');
     await file.writeAsBytes(bytes);
 
     await Share.shareXFiles([
@@ -78,129 +118,20 @@ class ExcelService {
         mimeType:
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       ),
-    ], text: 'Scanned bill data');
+    ], text: 'Invoice data');
   }
 
-  static void _addCell(
+  static void _set(
     Sheet sheet,
     int column,
     int row,
-    String value, [
-    CellStyle? style,
-  ]) {
+    CellValue value,
+    CellStyle style,
+  ) {
     final cell = sheet.cell(
       CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row),
     );
-
-    cell.value = TextCellValue(value);
-
-    if (style != null) {
-      cell.cellStyle = style;
-    }
+    cell.value = value;
+    cell.cellStyle = style;
   }
-
-  static List<_Field> _extractFields(String text) {
-    final fields = <_Field>[];
-
-    final lines =
-        text
-            .split('\n')
-            .map((line) => line.trim())
-            .where((line) => line.isNotEmpty)
-            .toList();
-
-    for (final line in lines) {
-      final parts =
-          line
-              .split('|')
-              .map((part) => part.trim())
-              .where((part) => part.isNotEmpty)
-              .toList();
-
-      if (parts.length >= 2) {
-        final name = parts.first;
-        final value = parts.sublist(1).join(' ');
-
-        if (_isHeader(name, value)) {
-          continue;
-        }
-
-        fields.add(_Field(name: _cleanFieldName(name), value: value));
-
-        continue;
-      }
-
-      final colonMatch = RegExp(r'^(.+?)\s*:\s*(.+)$').firstMatch(line);
-
-      if (colonMatch != null) {
-        final name = colonMatch.group(1)!.trim();
-        final value = colonMatch.group(2)!.trim();
-
-        if (_isHeader(name, value)) {
-          continue;
-        }
-
-        fields.add(_Field(name: _cleanFieldName(name), value: value));
-
-        continue;
-      }
-
-      final dashMatch = RegExp(r'^(.+?)\s+-\s+(.+)$').firstMatch(line);
-
-      if (dashMatch != null) {
-        final name = dashMatch.group(1)!.trim();
-        final value = dashMatch.group(2)!.trim();
-
-        if (_isHeader(name, value)) {
-          continue;
-        }
-
-        fields.add(_Field(name: _cleanFieldName(name), value: value));
-
-        continue;
-      }
-
-      final amountMatch = RegExp(
-        r'^(.+?)\s+((?:£|€|\$|₹)\s*[-]?[\d,]+(?:\.\d{1,2})?(?:\s*(?:CR|DR))?)$',
-        caseSensitive: false,
-      ).firstMatch(line);
-
-      if (amountMatch != null) {
-        fields.add(
-          _Field(
-            name: _cleanFieldName(amountMatch.group(1)!.trim()),
-            value: amountMatch.group(2)!.trim(),
-          ),
-        );
-      }
-    }
-
-    return fields;
-  }
-
-  static String _cleanFieldName(String value) {
-    return value
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .replaceAll(RegExp(r'[:\-]+$'), '')
-        .trim();
-  }
-
-  static bool _isHeader(String name, String value) {
-    final combined = '$name $value'.toLowerCase().replaceAll(
-      RegExp(r'\s+'),
-      ' ',
-    );
-
-    return combined == 'field value' ||
-        combined.contains(
-          'charge type charge dates quantity price vat charges',
-        );
-  }
-}
-
-class _Field {
-  final String name;
-  final String value;
-
-  const _Field({required this.name, required this.value});
 }

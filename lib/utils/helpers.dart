@@ -45,15 +45,20 @@ String invoiceCode(int index) {
 
 const String kCurrency = '\u00A3';
 
-/// 1234.5 -> £1,234.50
-String formatMoney(num value) {
+String formatMoney(num value, {String symbol = kCurrency}) {
   final neg = value < 0;
   final parts = value.abs().toStringAsFixed(2).split('.');
   final whole = parts[0].replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'),
     (m) => ',',
   );
-  return '${neg ? '-' : ''}$kCurrency$whole.${parts[1]}';
+  return '${neg ? '-' : ''}$symbol$whole.${parts[1]}';
+}
+
+/// formatMoney for the built-in PDF font (Helvetica has no ₹ glyph).
+String formatMoneyPdf(num value, {String symbol = kCurrency}) {
+  final s = symbol == '₹' ? 'Rs. ' : symbol;
+  return formatMoney(value, symbol: s);
 }
 
 DateTime parseServerTime(dynamic raw) {

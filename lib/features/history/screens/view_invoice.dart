@@ -14,26 +14,6 @@ class InvoiceViewDialog extends StatelessWidget {
   final InvoiceData invoice;
   const InvoiceViewDialog({super.key, required this.invoice});
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sept',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
-  String _fmt(DateTime d) {
-    final l = d.toLocal();
-    return '${l.day} ${_months[l.month - 1]} ${l.year}';
-  }
-
   String _dash(String? v) => (v == null || v.trim().isEmpty) ? '—' : v;
 
   ({String label, Color color}) _ocr() {
@@ -304,7 +284,7 @@ class InvoiceViewDialog extends StatelessWidget {
           ),
           SizedBox(height: Sizes.h(6)),
           Text(
-            "${invoice.gross}",
+            invoice.grossFormatted,
             style: TextStyle(
               fontSize: Sizes.sp(28),
               fontWeight: FontWeight.w800,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:quick_scanner/utils/helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:quick_scanner/routes_list.dart';
@@ -353,7 +352,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "${invoice.gross}",
+                          invoice.grossFormatted,
 
                           style: TextStyle(
                             color: ColorConstants.white,
@@ -533,7 +532,7 @@ class InvoiceDetailScreen extends StatelessWidget {
             // copyable: invoice.invoiceNo.toString().trim().isNotEmpty,
           ),
           _divider(),
-          _row(Icons.payments_outlined, 'Gross total', "${invoice.gross}"),
+          _row(Icons.payments_outlined, 'Gross total', invoice.grossFormatted),
           _divider(),
           _row(
             Icons.cloud_upload_outlined,

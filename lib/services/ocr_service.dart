@@ -4,6 +4,24 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 
+/// Thrown when a page has no readable text, so processing can stop early.
+class NoTextFoundException implements Exception {
+  /// 1-based page number that had no text.
+  final int page;
+  const NoTextFoundException(this.page);
+
+  String get message =>
+      'No text could be read from page $page. Please retake the photo '
+      ' and try again.';
+
+  @override
+  String toString() => message;
+}
+
+/// True when [text] has enough letters/digits to be a real read (not noise).
+bool hasReadableText(String text) =>
+    RegExp(r'[A-Za-z0-9]').allMatches(text).length >= 8;
+
 class OcrService {
   final TextRecognizer textRecognizer = TextRecognizer(
     script: TextRecognitionScript.latin,
@@ -11,24 +29,27 @@ class OcrService {
 
   Future<String> extractText(File imageFile) async {
     try {
-      // Start the (slow) image enhancement in a background isolate right
-      // away so it runs while the first OCR pass is working.
-      final enhancedFuture = compute(_enhanceImage, imageFile.path);
-
       final original = await _recognize(imageFile);
 
-      // Fast path: the first pass already looks like a good invoice read,
-      // so skip the second OCR pass entirely.
+      // Fast path: the first pass already looks like a good invoice read, so
+      // skip enhancement + second OCR pass. Enhancement only starts when it is
+      // really needed, so it never steals CPU from the first OCR pass.
       if (_isGood(original)) {
-        enhancedFuture.ignore();
         debugPrint('OCR fast path (original is good enough)');
+        return original;
+      }
+
+      // Nothing readable at all: skip the slow enhancement pass and return
+      // right away so the caller can alert the user and stop.
+      if (!hasReadableText(original)) {
+        debugPrint('OCR found no readable text, skipping enhancement');
         return original;
       }
 
       var enhanced = '';
       File? tmp;
       try {
-        final bytes = await enhancedFuture;
+        final bytes = await compute(_enhanceImage, imageFile.path);
         tmp = File(
           '${Directory.systemTemp.path}/ocr_${DateTime.now().microsecondsSinceEpoch}.jpg',
         );
@@ -242,22 +263,22 @@ Uint8List _enhanceImage(String path) {
 
   // Small text needs enough pixels: bring the long side to ~2600px.
   final longSide = math.max(image.width, image.height);
-  const target = 2200;
+  const target = 2000;
   if (longSide < target) {
     final scale = target / longSide;
     image = img.copyResize(
       image,
       width: (image.width * scale).round(),
       height: (image.height * scale).round(),
-      interpolation: img.Interpolation.cubic,
+      interpolation: img.Interpolation.linear,
     );
-  } else if (longSide > 3600) {
-    final scale = 3200 / longSide;
+  } else if (longSide > 3200) {
+    final scale = 3000 / longSide;
     image = img.copyResize(
       image,
       width: (image.width * scale).round(),
       height: (image.height * scale).round(),
-      interpolation: img.Interpolation.average,
+      interpolation: img.Interpolation.linear,
     );
   }
 
@@ -265,7 +286,7 @@ Uint8List _enhanceImage(String path) {
   image = img.normalize(image, min: 0, max: 255);
   image = img.adjustColor(image, contrast: 1.25);
 
-  return Uint8List.fromList(img.encodeJpg(image, quality: 88));
+  return Uint8List.fromList(img.encodeJpg(image, quality: 85));
 }
 
 class _RawLine {

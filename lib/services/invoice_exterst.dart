@@ -20,6 +20,46 @@ class InvoiceExtractionService {
     'Goods',
   ];
 
+  /// Currency symbol for the invoice, or null if it can't be told.
+  static String? detectCurrency(String text) {
+    int count(String pattern, {bool ci = true}) =>
+        RegExp(pattern, caseSensitive: !ci).allMatches(text).length;
+
+    // 1. Explicit symbols / codes: most frequent wins.
+    final explicit = <String, int>{
+      '£': count(r'£|\bGBP\b'),
+      '€': count(r'€|\bEUR\b'),
+      r'$': count(r'\$|\bUSD\b'),
+      '₹': count(r'₹|\bINR\b|\bRs\.?(?=\s*\d)|\bRupees?\b'),
+    };
+    String? best;
+    var max = 0;
+    explicit.forEach((symbol, n) {
+      if (n > max) {
+        max = n;
+        best = symbol;
+      }
+    });
+    if (best != null) return best;
+
+    // 2. The symbol was lost or misread by OCR (₹ -> "¿", "?", "E"):
+    //    use country hints from the text instead.
+    if (count(
+          r'\bGSTIN?\b|\bCGST\b|\bSGST\b|\bIGST\b|\bCHENNAI\b|\bMUMBAI\b|\bDELHI\b|\bBANGALORE\b|\bBENGALURU\b|\bHYDERABAD\b|\bTAMIL\s*NADU\b|\bINDIA\b',
+        ) >
+        0) {
+      return '₹';
+    }
+    if (count(r'\bVAT\b|\bLtd\b|\bLimited\b|\bPLC\b|\bUnited\s*Kingdom\b') >
+        0) {
+      return '£';
+    }
+    if (count(r'\bUSA\b|\bUnited\s*States\b|\bSales\s*Tax\b') > 0) {
+      return r'$';
+    }
+    return null;
+  }
+
   static const _vatLabels = [
     'VAT Total',
     'Total V.A.T.',
@@ -132,6 +172,7 @@ class InvoiceExtractionService {
       'zr': 0,
       'exempt': 0,
       'payment': _extractPaymentTerm(text),
+      'currency': detectCurrency(text) ?? '£', // NEW
       'extraction_method': 'ai',
       'ocr_status': 'complete',
       'status': 'pending',

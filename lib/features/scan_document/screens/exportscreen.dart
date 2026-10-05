@@ -31,7 +31,6 @@ class ExportScreen extends StatelessWidget {
       return;
     }
 
-    // Raw data only: one record per invoice, text = OCR raw text
     final records =
         all
             .map(
@@ -39,10 +38,10 @@ class ExportScreen extends StatelessWidget {
                 text: c.rawTextOf(inv),
                 imagePath: inv.images.isNotEmpty ? inv.images.first.url : '',
                 createdAt: inv.uploadedAt,
+                currency: inv.currency,
               ),
             )
             .toList();
-
     if (context.mounted) showExportSheet(context, records);
   }
 
@@ -328,7 +327,7 @@ class ExportScreen extends StatelessWidget {
           ),
           SizedBox(width: Sizes.w(8)),
           Text(
-            "${inv.gross}",
+            inv.grossFormatted,
             style: TextStyle(
               fontSize: Sizes.sp(14),
               fontWeight: FontWeight.w800,

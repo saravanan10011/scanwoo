@@ -627,7 +627,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               SizedBox(width: Sizes.w(8)),
               Text(
-                "${inv.gross}",
+                inv.grossFormatted,
                 style: TextStyle(
                   fontSize: Sizes.sp(14),
                   fontWeight: FontWeight.w800,

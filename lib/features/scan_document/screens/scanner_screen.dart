@@ -35,6 +35,8 @@ class ScannerScreenController extends GetxController {
     final image = await picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 85,
+      maxWidth: 2400,
+      maxHeight: 2400,
     );
 
     if (image == null || isClosed) return;
@@ -51,24 +53,30 @@ class ScannerScreenController extends GetxController {
   }
 
   // Future<void> gallery() async {
-  //   final files = await picker.pickMultiImage(imageQuality: 85);
-
+  //   final files = await picker.pickMultiImage(
+  //     source: ImageSource.gallery,
+  //     imageQuality: 85,
+  //     maxWidth: 2400,
+  //     maxHeight: 2400,
+  //   );
+  //
   //   if (files.isEmpty || isClosed) return;
-
+  //
   //   for (final file in files) {
   //     if (isClosed) return;
-
+  //
   //     final File? croppedImage = await Get.toNamed<dynamic>(
   //       RouteList.cropAdjust,
   //       arguments: {'image': File(file.path)},
   //     );
-
+  //
   //     if (croppedImage == null || isClosed) continue;
-
+  //
   //     images.add(croppedImage);
   //     _selectLast();
   //   }
   // }
+
   bool isSupportedImage(String path) {
     final mimeType = lookupMimeType(path);
 
@@ -255,18 +263,28 @@ class ScannerScreenController extends GetxController {
             );
 
             // OCR up to 3 pages at once (order is preserved by index).
+            // If any page has no readable text we stop right away: pages that
+            // have not started yet are skipped and the user gets an alert.
             const batch = 3;
-            for (var i = 0; i < paths.length; i += batch) {
+            int? emptyPage;
+            for (var i = 0; i < paths.length && emptyPage == null; i += batch) {
               final end = i + batch > paths.length ? paths.length : i + batch;
               await Future.wait([
                 for (var j = i; j < end; j++)
                   () async {
+                    if (emptyPage != null) return;
                     final text = await ocrService.extractText(File(paths[j]));
+                    if (!hasReadableText(text)) {
+                      emptyPage ??= j + 1;
+                      return;
+                    }
                     results[j] = text;
                     dataList[j] = InvoiceExtractionService.extract(text);
                   }(),
               ]);
             }
+
+            if (emptyPage != null) throw NoTextFoundException(emptyPage!);
 
             extractedDataList
               ..clear()
