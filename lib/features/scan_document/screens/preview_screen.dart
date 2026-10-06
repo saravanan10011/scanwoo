@@ -733,7 +733,7 @@ class _SaveBar extends StatelessWidget {
               ),
               // icon: Icon(Icons.check_rounded, size: Sizes.w(20)),
               label: Text(
-                'Continue',
+                'Save',
                 style: TextStyle(
                   fontSize: Sizes.sp(15),
                   fontWeight: FontWeight.w700,

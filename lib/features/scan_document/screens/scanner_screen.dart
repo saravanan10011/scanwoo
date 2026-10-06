@@ -33,10 +33,109 @@ class ScannerScreenController extends GetxController {
   final selectedImage = 0.obs;
   final isProcessing = false.obs;
 
+  /// false = "Multiple invoices" (each image is its own invoice)
+  /// true  = "Single invoice"    (all images are pages of ONE invoice)
+  final oneInvoice = false.obs;
+
+  /// A single invoice can have at most this many pages.
+  // static const maxPages = 20;
+
+  // bool get _atLimit => oneInvoice.value && images.length >= maxPages;
+  //
+  // /// Shows a message and returns true when no more pages can be added.
+  // bool _checkLimit() {
+  //   if (!_atLimit) return false;
+  //   Get.snackbar(
+  //     'Page limit reached',
+  //     'A single invoice can have up to $maxPages pages.',
+  //     backgroundColor: Colors.redAccent,
+  //     colorText: Colors.white,
+  //     snackPosition: SnackPosition.BOTTOM,
+  //     margin: EdgeInsets.all(Sizes.w(10)),
+  //     borderRadius: Sizes.w(10),
+  //   );
+  //   return true;
+  // }
+
+  void setMode(bool one) {
+    oneInvoice.value = one;
+    if (one) {
+      scanner.groupAllAsOne();
+    } else {
+      scanner.separateAll();
+    }
+  }
+
+  /// Mode switch from the selector. Asks first when it would change existing pages.
+  Future<void> requestMode(bool one) async {
+    if (isProcessing.value || one == oneInvoice.value) return;
+
+    final count = images.length;
+
+    if (one && count > 1) {
+      // if (count > maxPages) {
+      //   await _showNoTextAlert(
+      //     title: 'Too many pages',
+      //     message:
+      //         'A single invoice can have up to $maxPages pages. '
+      //         'Remove some images first.',
+      //   );
+      //   return;
+      // }
+      final bills = scanner.buildGroups(images.toList()).length;
+      if (bills > 1) {
+        final ok = await _confirm(
+          title: 'Combine into one invoice?',
+          message: 'All $count images will be uploaded as ONE invoice.',
+          action: 'Combine',
+        );
+        if (!ok) return;
+      }
+    } else if (!one && count > 1) {
+      final ok = await _confirm(
+        title: 'Upload as separate invoices?',
+        message: 'Each of the $count images will become its own invoice.',
+        action: 'Separate',
+      );
+      if (!ok) return;
+    }
+
+    setMode(one);
+  }
+
+  /// Drag a page to a new position (single-invoice mode).
+  void reorder(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    if (oldIndex == newIndex) return;
+    final f = images.removeAt(oldIndex);
+    images.insert(newIndex, f);
+    selectedImage.value = newIndex;
+  }
+
   RxList<File> get images => scanner.images;
   void _selectLast() => selectedImage.value = images.length - 1;
 
+  /// Adds one scanned / picked image. In "single invoice" mode it joins the invoice.
+  void _addPage(File file) {
+    images.add(file);
+    if (oneInvoice.value) scanner.groupAllAsOne();
+  }
+
+  /// All pages of one PDF are one bill.
+  void _groupPages(List<File> pages) {
+    if (pages.length >= 2) {
+      final id = scanner.newGroupId();
+      for (final f in pages) {
+        scanner.pageGroup[f.path] = id;
+      }
+      scanner.fileGroups.add(id); // a PDF file is always one invoice
+    }
+    if (oneInvoice.value) scanner.groupAllAsOne();
+  }
+
   Future<void> camera() async {
+    // if (_checkLimit()) return;
+
     final image = await picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 85,
@@ -53,7 +152,7 @@ class ScannerScreenController extends GetxController {
 
     if (croppedImage == null || isClosed) return;
 
-    images.add(croppedImage);
+    _addPage(croppedImage);
     _selectLast();
   }
 
@@ -105,6 +204,8 @@ class ScannerScreenController extends GetxController {
     bool hasUnsupportedFile = false;
     String? pdfError;
 
+    // if (_checkLimit()) return;
+
     for (final path in paths) {
       if (isClosed) return;
 
@@ -112,7 +213,12 @@ class ScannerScreenController extends GetxController {
       if (PdfImportService.isPdf(path)) {
         isProcessing.value = true;
         try {
-          images.addAll(await PdfImportService.renderPages(path));
+          final pages = await PdfImportService.renderPages(path);
+          if (oneInvoice.value) {
+            continue;
+          }
+          images.addAll(pages);
+          _groupPages(pages); // all pages of one PDF = one bill
         } on PdfImportException catch (e) {
           pdfError = e.message;
         } catch (_) {
@@ -128,6 +234,11 @@ class ScannerScreenController extends GetxController {
         continue;
       }
 
+      // if (_atLimit) {
+      //   limitHit = true;
+      //   continue;
+      // }
+
       final File? croppedImage = await Get.toNamed<dynamic>(
         RouteList.cropAdjust,
         arguments: {'image': File(path)},
@@ -137,13 +248,18 @@ class ScannerScreenController extends GetxController {
       }
       if (croppedImage == null || isClosed) continue;
 
-      images.add(croppedImage);
+      _addPage(croppedImage);
     }
 
     if (isClosed) return;
 
     if (pdfError != null) {
       await _showNoTextAlert(title: 'PDF not supported', message: pdfError);
+      // } else if (limitHit) {
+      //   // await _showNoTextAlert(
+      //   title: 'Page limit reached',
+      //   message: 'A single invoice can have up to $maxPages pages.',
+      // );
     } else if (hasUnsupportedFile) {
       await _showNoTextAlert(
         title: 'Unsupported file',
@@ -167,7 +283,13 @@ class ScannerScreenController extends GetxController {
       for (final path in paths) {
         if (isClosed) return;
         final pages = await PdfImportService.renderPages(path);
+        // if (oneInvoice.value && images.length + pages.length > maxPages) {
+        //   throw PdfImportException(
+        //     'A single invoice can have up to $maxPages pages.',
+        //   );
+        // }
         images.addAll(pages);
+        _groupPages(pages); // all pages of one PDF = one bill
       }
       if (images.isNotEmpty) _selectLast();
     } on PdfImportException catch (e) {
@@ -291,17 +413,159 @@ class ScannerScreenController extends GetxController {
     );
   }
 
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String action,
+    IconData icon = Icons.help_outline_rounded,
+  }) async {
+    final result = await Get.dialog<bool>(
+      Dialog(
+        backgroundColor: ColorConstants.white,
+        elevation: 0,
+        insetPadding: EdgeInsets.symmetric(horizontal: _sw(28)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_sw(24)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(_sw(22), _sh(26), _sw(22), _sh(20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon badge with soft halo
+              Container(
+                padding: EdgeInsets.all(_sw(10)),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ColorConstants.primary.withValues(alpha: 0.08),
+                ),
+                child: Container(
+                  width: _sw(56),
+                  height: _sw(56),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ColorConstants.primary.withValues(alpha: 0.14),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: ColorConstants.primary,
+                    size: _sp(28),
+                  ),
+                ),
+              ),
+              SizedBox(height: _sh(18)),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: ColorConstants.textDark2,
+                  fontSize: _sp(18),
+                  height: 1.25,
+                ),
+              ),
+              SizedBox(height: _sh(8)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ColorConstants.textMuted2,
+                  fontSize: _sp(13.5),
+                  height: 1.45,
+                ),
+              ),
+              SizedBox(height: _sh(22)),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: _sh(46),
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(result: false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ColorConstants.textDark2,
+                          side: BorderSide(
+                            color: ColorConstants.textMuted2.withValues(
+                              alpha: 0.35,
+                            ),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(_sw(14)),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: _sp(15),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: _sw(12)),
+                  Expanded(
+                    child: SizedBox(
+                      height: _sh(46),
+                      child: ElevatedButton(
+                        onPressed: () => Get.back(result: true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ColorConstants.primary,
+                          foregroundColor: ColorConstants.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(_sw(14)),
+                          ),
+                        ),
+                        child: Text(
+                          action,
+                          style: TextStyle(
+                            fontSize: _sp(15),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+    return result ?? false; // tapping outside = cancel
+  }
+
   /// OCR every page, send it straight to the backend, then show the saved
   /// result. There is no separate "extracted text" review screen.
   Future<void> process() async {
     if (images.isEmpty || isProcessing.value) return;
 
+    // if (oneInvoice.value && images.length > maxPages) {
+    //   await _showNoTextAlert(
+    //     title: 'Too many pages',
+    //     message: 'A single invoice can have up to $maxPages pages.',
+    //   );
+    //   return;
+    // }
+
     isProcessing.value = true;
 
     try {
       final imagesCopy = List<File>.from(images);
-      final textsOut = <String>[];
-      final dataOut = <Map<String, dynamic>>[];
+      // "Single invoice" must upload exactly ONE invoice, whatever happened
+      // before (merge / split, removed pages ...).
+      if (oneInvoice.value) scanner.groupAllAsOne();
+      final groups = scanner.buildGroups(
+        imagesCopy,
+      ); // e.g. [[0], [1, 2, 3], [4]]
+      assert(!oneInvoice.value || groups.length == 1);
+
+      final groupFiles = <List<File>>[];
+      final textsOut = <String>[]; // one per bill
+      final dataOut = <Map<String, dynamic>>[]; // one per bill
 
       final dynamic done = await Get.toNamed<dynamic>(
         RouteList.processing,
@@ -309,10 +573,6 @@ class ScannerScreenController extends GetxController {
           'imagePaths': imagesCopy.map((file) => file.path).toList(),
           'onProcess': (List<String> paths) async {
             final results = List<String>.filled(paths.length, '');
-            final dataList = List<Map<String, dynamic>>.filled(
-              paths.length,
-              <String, dynamic>{},
-            );
 
             // OCR up to 3 pages at once (order is preserved by index).
             // If any page has no readable text we stop right away: pages that
@@ -331,23 +591,32 @@ class ScannerScreenController extends GetxController {
                       return;
                     }
                     results[j] = text;
-                    dataList[j] = InvoiceExtractionService.extract(text);
                   }(),
               ]);
             }
 
             if (emptyPage != null) throw NoTextFoundException(emptyPage!);
 
-            // Submit to the backend while the processing screen is still up.
-            await HistoryRepository().uploadInvoicesIndividually(
+            // Join the pages of each bill (page 1 first), extract ONCE per bill.
+            final groupTexts = <String>[];
+            final groupData = <Map<String, dynamic>>[];
+            for (final g in groups) {
+              groupFiles.add([for (final i in g) imagesCopy[i]]);
+              final joined = g.map((i) => results[i]).join('\n');
+              groupTexts.add(joined);
+              groupData.add(InvoiceExtractionService.extract(joined));
+            }
+
+            // One request per bill; a multi-page bill sends all its pages.
+            await HistoryRepository().uploadInvoiceGroups(
               token: Get.find<TokenDataServiceImp>().accessToken,
-              images: imagesCopy,
-              extractedDataList: results,
-              fieldsList: dataList,
+              groups: groupFiles,
+              extractedDataList: groupTexts,
+              fieldsList: groupData,
             );
 
-            textsOut.addAll(results);
-            dataOut.addAll(dataList);
+            textsOut.addAll(groupTexts);
+            dataOut.addAll(groupData);
             return results;
           },
         },
@@ -359,20 +628,22 @@ class ScannerScreenController extends GetxController {
       // null = OCR failed / no text (the user was already told why).
       if (done == null || textsOut.isEmpty) return;
 
-      // Keep a local history copy, same as the old review screen did.
+      // Keep a local history copy: one record per BILL (first page = thumbnail).
       final saved = <ScanRecord>[];
-      for (var i = 0; i < imagesCopy.length; i++) {
+      for (var i = 0; i < groupFiles.length; i++) {
         await ScanHistoryService.addRecord(
           text: textsOut[i],
-          imageFile: imagesCopy[i],
+          imageFile: groupFiles[i].first,
           extractedData: dataOut[i],
         );
       }
       final all = ScanHistoryService.recordsNotifier.value;
       // addRecord inserts at index 0, so the newest batch is at the front.
-      saved.addAll(all.take(imagesCopy.length).toList().reversed);
+      saved.addAll(all.take(groupFiles.length).toList().reversed);
 
       images.clear();
+      scanner.resetGroups();
+      oneInvoice.value = false;
       selectedImage.value = 0;
 
       if (saved.isEmpty) return;
@@ -401,6 +672,7 @@ class ScannerScreenController extends GetxController {
   void remove(int index) {
     if (index < 0 || index >= images.length) return;
 
+    scanner.pageGroup.remove(images[index].path);
     images.removeAt(index);
 
     if (images.isEmpty) {
@@ -414,6 +686,8 @@ class ScannerScreenController extends GetxController {
     if (images.isEmpty) return;
 
     images.clear();
+    scanner.resetGroups();
+    oneInvoice.value = false;
     selectedImage.value = 0;
   }
 
@@ -452,16 +726,10 @@ class ScannerScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
+                    _modeSelector(c),
+                    SizedBox(height: Sizes.h(14)),
                     _preview(c),
-                    Obx(
-                      () =>
-                          c.images.isEmpty
-                              ? const SizedBox.shrink()
-                              : Padding(
-                                padding: EdgeInsets.only(top: Sizes.h(14)),
-                                child: _thumbnails(c),
-                              ),
-                    ),
+                    _bills(c),
                     SizedBox(height: Sizes.h(18)),
                     Obx(
                       () => Row(
@@ -469,21 +737,21 @@ class ScannerScreen extends StatelessWidget {
                           _actionCard(
                             Icons.camera_alt_outlined,
                             'Camera',
-                            'Take photo',
+                            c.oneInvoice.value ? 'Add a page' : 'Take photo',
                             c.isProcessing.value ? null : c.camera,
                           ),
                           SizedBox(width: Sizes.w(12)),
                           _actionCard(
                             Icons.photo_library_outlined,
                             'Gallery',
-                            'Images or PDF',
+                            c.oneInvoice.value ? 'Add pages' : 'Images or PDF',
                             c.isProcessing.value ? null : c.gallery,
                           ),
                           SizedBox(width: Sizes.w(12)),
                           _actionCard(
                             Icons.picture_as_pdf_outlined,
                             'PDF',
-                            'Pick file',
+                            c.oneInvoice.value ? 'Add PDF pages' : 'Pick file',
                             c.isProcessing.value ? null : c.pickPdf,
                           ),
                         ],
@@ -538,6 +806,7 @@ class ScannerScreen extends StatelessWidget {
           ),
           child: Obx(() {
             final count = c.images.length;
+            final bills = c.scanner.buildGroups(c.images.toList()).length;
 
             return Row(
               children: [
@@ -559,7 +828,9 @@ class ScannerScreen extends StatelessWidget {
                       Text(
                         count == 0
                             ? 'Capture or upload invoices'
-                            : '$count document${count == 1 ? '' : 's'} ready',
+                            : bills == count
+                            ? '$bills invoice${bills == 1 ? '' : 's'} ready'
+                            : '$bills invoice${bills == 1 ? '' : 's'} · $count pages',
                         style: TextStyle(
                           fontSize: Sizes.sp(12),
                           color: Colors.white70,
@@ -610,6 +881,24 @@ class ScannerScreen extends StatelessWidget {
       child: Obx(() {
         final images = c.images;
         final selected = c.selectedImage.value;
+
+        // "Invoice 2 · Page 1/3" for the page being previewed.
+        var pill = '${selected + 1} / ${images.length}';
+        if (c.oneInvoice.value) {
+          pill = 'Page ${selected + 1} / ${images.length}';
+        } else if (images.length > 1 && selected < images.length) {
+          final groups = c.scanner.buildGroups(images.toList());
+          for (var b = 0; b < groups.length; b++) {
+            final g = groups[b];
+            if (g.contains(selected)) {
+              pill =
+                  g.length > 1
+                      ? 'Invoice ${b + 1} · Page ${g.indexOf(selected) + 1}/${g.length}'
+                      : 'Invoice ${b + 1}';
+              break;
+            }
+          }
+        }
 
         return Stack(
           children: [
@@ -671,7 +960,7 @@ class ScannerScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(Sizes.w(20)),
                   ),
                   child: Text(
-                    '${selected + 1} / ${images.length}',
+                    pill,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: Sizes.sp(11.5),
@@ -686,64 +975,457 @@ class ScannerScreen extends StatelessWidget {
     );
   }
 
-  Widget _thumbnails(ScannerScreenController c) {
-    return Container(
-      padding: EdgeInsets.all(Sizes.w(12)),
-      decoration: _box(),
-      child: SizedBox(
-        height: Sizes.h(65),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: c.images.length,
-          itemBuilder: (context, index) {
-            return Obx(() {
-              final selected = index == c.selectedImage.value;
+  // ---------------------------------------------------------------------
+  // Bills: one card per bill, its pages in order
+  // ---------------------------------------------------------------------
 
-              return GestureDetector(
-                onTap: () => c.selectedImage.value = index,
-                child: Container(
-                  width: Sizes.w(60),
-                  margin: EdgeInsets.only(right: Sizes.w(8)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(Sizes.w(8)),
-                    border: Border.all(
-                      color: selected ? _primary : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(Sizes.w(6)),
-                        child: Image.file(
-                          c.images[index],
-                          width: Sizes.w(60),
-                          height: Sizes.h(65),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Positioned(
-                        right: 1,
-                        top: 1,
-                        child: GestureDetector(
-                          onTap: () => c.remove(index),
-                          child: CircleAvatar(
-                            radius: Sizes.w(9),
-                            backgroundColor: Colors.redAccent,
-                            child: Icon(
-                              Icons.close,
-                              size: Sizes.w(12),
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+  Widget _bills(ScannerScreenController c) {
+    return Obx(() {
+      final files = c.images.toList();
+      if (files.isEmpty) return const SizedBox.shrink();
+
+      final sel = c.selectedImage.value;
+      final busy = c.isProcessing.value;
+
+      if (c.oneInvoice.value) {
+        return Padding(
+          padding: EdgeInsets.only(top: Sizes.h(14)),
+          child: _singleInvoiceCard(c, files.length, sel, busy),
+        );
+      }
+
+      // Reads pageGroup, so this rebuilds whenever pages are merged / split.
+      final groups = c.scanner.buildGroups(files);
+
+      return Padding(
+        padding: EdgeInsets.only(top: Sizes.h(14)),
+        child: Column(
+          children: [
+            for (var b = 0; b < groups.length; b++)
+              _billCard(c, groups, b, sel, busy),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _singleInvoiceCard(
+    ScannerScreenController c,
+    int count,
+    int sel,
+    bool busy,
+  ) {
+    // final full = count >= ScannerScreenController.maxPages;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(Sizes.w(12)),
+      decoration: _box().copyWith(
+        border: Border.all(color: _primary.withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(Sizes.w(6)),
+                decoration: const BoxDecoration(
+                  color: _primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.layers,
+                  color: Colors.white,
+                  size: Sizes.w(14),
+                ),
+              ),
+              SizedBox(width: Sizes.w(8)),
+              Expanded(
+                child: Text(
+                  'Your invoice',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: Sizes.sp(13.5),
+                    color: _textDark,
                   ),
                 ),
-              );
-            });
-          },
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Sizes.w(8),
+                  vertical: Sizes.h(2),
+                ),
+                decoration: BoxDecoration(
+                  color: _cardIconBg,
+                  borderRadius: BorderRadius.circular(Sizes.w(20)),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: Sizes.sp(10.5),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Sizes.h(10)),
+          SizedBox(
+            height: Sizes.h(78),
+            child: ReorderableListView.builder(
+              scrollDirection: Axis.horizontal,
+              buildDefaultDragHandles: !busy,
+              itemCount: c.images.length,
+              onReorder: busy ? (_, _) {} : c.reorder,
+              proxyDecorator:
+                  (child, _, _) => Material(
+                    color: Colors.transparent,
+                    elevation: 6,
+                    borderRadius: BorderRadius.circular(Sizes.w(10)),
+                    child: child,
+                  ),
+              itemBuilder: (_, i) {
+                final path = c.images[i].path;
+                return KeyedSubtree(
+                  key: ValueKey(path),
+                  child: _pageTile(c, i, i + 1, i == sel, busy),
+                );
+              },
+            ),
+          ),
+          if (count > 1) ...[
+            SizedBox(height: Sizes.h(8)),
+            Row(
+              children: [
+                Icon(Icons.swap_horiz, size: Sizes.w(14), color: _textMuted),
+                SizedBox(width: Sizes.w(6)),
+                Text(
+                  'Hold and drag a page to change the order',
+                  style: TextStyle(color: _textMuted, fontSize: Sizes.sp(11)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _modeSelector(ScannerScreenController c) {
+    return Obx(() {
+      final one = c.oneInvoice.value;
+      final busy = c.isProcessing.value;
+
+      Widget tile(bool value, IconData icon, String title, String sub) {
+        final selected = one == value;
+        return Expanded(
+          child: GestureDetector(
+            onTap: busy ? null : () => c.requestMode(value),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: EdgeInsets.symmetric(
+                horizontal: Sizes.w(10),
+                vertical: Sizes.h(10),
+              ),
+              decoration: BoxDecoration(
+                color: selected ? _primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(Sizes.w(12)),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    icon,
+                    size: Sizes.w(22),
+                    color: selected ? Colors.white : _primary,
+                  ),
+                  SizedBox(height: Sizes.h(4)),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: Sizes.sp(12.5),
+                      color: selected ? Colors.white : _textDark,
+                    ),
+                  ),
+                  SizedBox(height: Sizes.h(2)),
+                  Text(
+                    sub,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: Sizes.sp(10.5),
+                      color: selected ? Colors.white70 : _textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Container(
+        padding: EdgeInsets.all(Sizes.w(6)),
+        decoration: _box(),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                tile(
+                  false,
+                  Icons.receipt_long_outlined,
+                  'Invoice Upload',
+                  'Upload multiple invoices together',
+                ),
+                SizedBox(width: Sizes.w(6)),
+                tile(
+                  true,
+                  Icons.layers_outlined,
+                  'Multi-Page Invoice',
+                  'Upload one invoice multiple pages',
+                ),
+              ],
+            ),
+            // Padding(
+            //   padding: EdgeInsets.fromLTRB(
+            //     Sizes.w(8),
+            //     Sizes.h(8),
+            //     Sizes.w(8),
+            //     Sizes.h(4),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       Icon(
+            //         Icons.info_outline,
+            //         size: Sizes.w(14),
+            //         color: _textMuted,
+            //       ),
+            //       SizedBox(width: Sizes.w(6)),
+            //       // Expanded(
+            //       //   child: Text(
+            //       //     one
+            //       //         ? 'All images upload as ONE invoice.'
+            //       //         : 'Each photo uploads as its own invoice. A PDF is always one invoice.',
+            //       //     style: TextStyle(
+            //       //       fontSize: Sizes.sp(11),
+            //       //       color: _textMuted,
+            //       //       height: 1.3,
+            //       //     ),
+            //       //   ),
+            //       // ),
+            //     ],
+            //   ),
+            // ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _billCard(
+    ScannerScreenController c,
+    List<List<int>> groups,
+    int b,
+    int sel,
+    bool busy,
+  ) {
+    final g = groups[b];
+    final hasSelected = g.contains(sel);
+    final posInBill = g.indexOf(sel); // -1 when the selected page is elsewhere
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: Sizes.h(10)),
+      padding: EdgeInsets.all(Sizes.w(12)),
+      decoration: _box().copyWith(
+        border: Border.all(
+          color:
+              hasSelected
+                  ? _primary.withValues(alpha: 0.35)
+                  : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: Sizes.w(24),
+                height: Sizes.w(24),
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: _primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${b + 1}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: Sizes.sp(11.5),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              SizedBox(width: Sizes.w(8)),
+              Text(
+                'Invoice ${b + 1}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: Sizes.sp(13.5),
+                  color: _textDark,
+                ),
+              ),
+              SizedBox(width: Sizes.w(8)),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Sizes.w(8),
+                  vertical: Sizes.h(2),
+                ),
+                decoration: BoxDecoration(
+                  color: _cardIconBg,
+                  borderRadius: BorderRadius.circular(Sizes.w(20)),
+                ),
+                child: Text(
+                  g.length == 1 ? '1 page' : '${g.length} pages',
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: Sizes.sp(10.5),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Sizes.h(10)),
+          SizedBox(
+            height: Sizes.h(78),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: g.length,
+              itemBuilder:
+                  (_, p) => _pageTile(c, g[p], p + 1, g[p] == sel, busy),
+            ),
+          ),
+          // Contextual action for the selected page of this bill.
+          if (hasSelected && !busy && !c.oneInvoice.value) ...[
+            // if (posInBill == 0 && b > 0)
+            //   _billAction(
+            //     Icons.call_merge,
+            //     'Merge into Invoice $b',
+            //     () => c.scanner.mergeBillWithPrevious(sel),
+            //   ),
+            if (posInBill > 0)
+              _billAction(
+                Icons.call_split,
+                'Start a new invoice from page ${posInBill + 1}',
+                () => c.scanner.splitBefore(sel),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _billAction(IconData icon, String label, VoidCallback onTap) {
+    return Padding(
+      padding: EdgeInsets.only(top: Sizes.h(8)),
+      child: TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: _primary,
+          backgroundColor: _cardIconBg,
+          padding: EdgeInsets.symmetric(
+            horizontal: Sizes.w(12),
+            vertical: Sizes.h(6),
+          ),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Sizes.w(10)),
+          ),
+        ),
+        icon: Icon(icon, size: Sizes.w(16)),
+        label: Text(
+          label,
+          style: TextStyle(fontSize: Sizes.sp(12), fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  Widget _pageTile(
+    ScannerScreenController c,
+    int index,
+    int pageNo,
+    bool selected,
+    bool busy,
+  ) {
+    return GestureDetector(
+      onTap: () => c.selectedImage.value = index,
+      child: Container(
+        width: Sizes.w(58),
+        margin: EdgeInsets.only(right: Sizes.w(8)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Sizes.w(10)),
+          border: Border.all(
+            color: selected ? _primary : const Color(0xFFE3E5EE),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Sizes.w(8)),
+              child: Image.file(
+                c.images[index],
+                width: Sizes.w(58),
+                height: Sizes.h(78),
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned(
+              left: 4,
+              bottom: 4,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Sizes.w(6),
+                  vertical: Sizes.h(1.5),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(Sizes.w(10)),
+                ),
+                child: Text(
+                  'P$pageNo',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: Sizes.sp(10),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 2,
+              top: 2,
+              child: GestureDetector(
+                onTap: busy ? null : () => c.remove(index),
+                child: CircleAvatar(
+                  radius: Sizes.w(9),
+                  backgroundColor: Colors.redAccent,
+                  child: Icon(
+                    Icons.close,
+                    size: Sizes.w(12),
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -812,6 +1494,7 @@ class ScannerScreen extends StatelessWidget {
       child: Obx(() {
         final count = c.images.length;
         final processing = c.isProcessing.value;
+        final bills = c.scanner.buildGroups(c.images.toList()).length;
 
         return ElevatedButton.icon(
           onPressed: count == 0 || processing ? null : c.process,
@@ -829,7 +1512,9 @@ class ScannerScreen extends StatelessWidget {
           label: Text(
             processing
                 ? 'Processing...'
-                : 'Process $count Document${count == 1 ? '' : 's'}',
+                : bills == count
+                ? 'Upload $bills Invoice${bills == 1 ? '' : 's'}'
+                : 'Upload $bills Invoice${bills == 1 ? '' : 's'} ($count pages)',
             style: TextStyle(
               fontSize: Sizes.sp(15),
               fontWeight: FontWeight.w600,

@@ -143,7 +143,7 @@ class InvoiceData {
               items: const [],
             );
 
-    final cur = _s(json["currency"]).trim();
+    // final cur = _s(json["currency"]).trim();
 
     return InvoiceData(
       id: _i(json["id"]),
@@ -159,7 +159,8 @@ class InvoiceData {
       zr: json["zr"],
       exempt: json["exempt"],
       payment: paymentValues.map[json["payment"]] ?? Payment.EMPTY,
-      currency: cur.isEmpty ? '£' : cur, // NEW
+      // currency: cur.isEmpty ? '£' : cur, // NEW
+      currency: _currencySymbol(json["currency"]),
       ocrStatus: ocrStatusValues.map[json["ocr_status"]] ?? OcrStatus.UNKNOWN,
       status: statusValues.map[json["status"]] ?? Status.UNKNOWN,
       uploadedAt: parseServerTime(
@@ -504,4 +505,24 @@ class EnumValues<T> {
   EnumValues(this.map);
 
   Map<T, String> get reverse => reverseMap;
+}
+
+/// "GBP" -> "£", "EUR" -> "€", "USD" -> "$", "INR" -> "₹".
+/// A value that is already a symbol is returned unchanged.
+String _currencySymbol(dynamic v) {
+  final c = (v == null ? '' : v.toString()).trim();
+  if (c.isEmpty || c.toLowerCase() == 'null') return '£';
+  switch (c.toUpperCase()) {
+    case 'GBP':
+      return '£';
+    case 'EUR':
+      return '€';
+    case 'USD':
+      return r'$';
+    case 'INR':
+    case 'RS':
+      return '₹';
+    default:
+      return c;
+  }
 }

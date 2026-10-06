@@ -12,10 +12,27 @@ import 'package:quick_scanner/utils/const.dart';
 class HistoryRepository {
   final HistoryController _controller = Get.find<HistoryController>();
   final ProfileController _profileController = Get.find<ProfileController>();
+
+  /// Single page (kept so existing callers still work).
   Future<dynamic> uploadInvoiceWithImage({
     required String? token,
     required File imageFile,
     required String extractedData,
+    Map<String, dynamic>? fields,
+  }) {
+    return uploadInvoiceWithImages(
+      token: token,
+      imageFiles: [imageFile],
+      extractedData: extractedData,
+      fields: fields,
+    );
+  }
+
+  /// ONE invoice made of one or more pages (images[] = every page, in order).
+  Future<dynamic> uploadInvoiceWithImages({
+    required String? token,
+    required List<File> imageFiles,
+    required String extractedData, // OCR text of all pages joined, in order
     Map<String, dynamic>? fields,
   }) async {
     try {
@@ -56,17 +73,20 @@ class HistoryRepository {
         }
       }
 
-      final stream = http.ByteStream(imageFile.openRead());
-      final length = await imageFile.length();
-      final fileName = imageFile.path.split(Platform.pathSeparator).last;
+      for (final file in imageFiles) {
+        final stream = http.ByteStream(file.openRead());
+        final length = await file.length();
+        final fileName = file.path.split(Platform.pathSeparator).last;
+        request.files.add(
+          http.MultipartFile('images[]', stream, length, filename: fileName),
+        );
+      }
 
-      request.files.add(
-        http.MultipartFile('images[]', stream, length, filename: fileName),
+      // More pages = more bytes to send.
+      final timeout = Duration(
+        seconds: 30 + 15 * (imageFiles.isEmpty ? 0 : imageFiles.length - 1),
       );
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
-      );
+      final streamedResponse = await request.send().timeout(timeout);
       final responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 201) {
@@ -83,6 +103,49 @@ class HistoryRepository {
         message: 'Network error or timeout: ${e.toString()}',
       );
     }
+  }
+
+  /// One upload per BILL. [groups] holds the page files of each bill.
+  /// A single-page bill is a list with one file (same request as before).
+  Future<List<dynamic>> uploadInvoiceGroups({
+    required String? token,
+    required List<List<File>> groups,
+    required List<String> extractedDataList, // one per bill
+    List<Map<String, dynamic>>? fieldsList, // one per bill
+  }) async {
+    assert(groups.length == extractedDataList.length);
+
+    final results = <dynamic>[];
+    int success = 0;
+    int failed = 0;
+
+    for (int i = 0; i < groups.length; i++) {
+      final result = await uploadInvoiceWithImages(
+        token: token,
+        imageFiles: groups[i],
+        extractedData: extractedDataList[i],
+        fields:
+            (fieldsList != null && i < fieldsList.length)
+                ? fieldsList[i]
+                : null,
+      );
+      results.add(result);
+
+      if (result is SuccessStatus) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
+
+    _showResultSnackBar(success: success, failed: failed);
+
+    if (success > 0) {
+      unawaited(_controller.fetchInvoices());
+      unawaited(_profileController.fetchdashboard());
+    }
+
+    return results;
   }
 
   /// Uploads many images, then shows ONE message and refreshes ONCE.

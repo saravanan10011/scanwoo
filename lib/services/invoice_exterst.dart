@@ -10,55 +10,20 @@ class InvoiceExtractionService {
     'Net Amount',
     'Net Total',
     'Total Net',
+    'Total Goods', // NEW
     'Goods Total',
     'Total Amount (Exc. VAT)',
     'Total Excluding VAT',
     'Total Ex VAT',
     'Total (Ex VAT)',
     'Amount Exc VAT',
+    'Total Amount Before Tax',
+    'Total Before Tax',
+    'Taxable Value',
+    'Taxable Amount',
     'Net Value',
     'Goods',
   ];
-
-  /// Currency symbol for the invoice, or null if it can't be told.
-  static String? detectCurrency(String text) {
-    int count(String pattern, {bool ci = true}) =>
-        RegExp(pattern, caseSensitive: !ci).allMatches(text).length;
-
-    // 1. Explicit symbols / codes: most frequent wins.
-    final explicit = <String, int>{
-      '£': count(r'£|\bGBP\b'),
-      '€': count(r'€|\bEUR\b'),
-      r'$': count(r'\$|\bUSD\b'),
-      '₹': count(r'₹|\bINR\b|\bRs\.?(?=\s*\d)|\bRupees?\b'),
-    };
-    String? best;
-    var max = 0;
-    explicit.forEach((symbol, n) {
-      if (n > max) {
-        max = n;
-        best = symbol;
-      }
-    });
-    if (best != null) return best;
-
-    // 2. The symbol was lost or misread by OCR (₹ -> "¿", "?", "E", "F", "{"):
-    //    use country hints from the text instead.
-    if (count(
-          r'\bGSTIN?\b|\bCGST\b|\bSGST\b|\bIGST\b|\bCHENNAI\b|\bMUMBAI\b|\bDELHI\b|\bBANGALORE\b|\bBENGALURU\b|\bHYDERABAD\b|\bTAMIL\s*NADU\b|\bINDIA\b',
-        ) >
-        0) {
-      return '₹';
-    }
-    if (count(r'\bVAT\b|\bLtd\b|\bLimited\b|\bPLC\b|\bUnited\s*Kingdom\b') >
-        0) {
-      return '£';
-    }
-    if (count(r'\bUSA\b|\bUnited\s*States\b|\bSales\s*Tax\b') > 0) {
-      return r'$';
-    }
-    return null;
-  }
 
   static const _vatLabels = [
     'VAT Total',
@@ -66,8 +31,15 @@ class InvoiceExtractionService {
     'Total VAT',
     'VAT Amount',
     'VAT Amt',
+    'Total GST',
+    'GST Amount',
+    'GST Amt',
+    'Total Tax',
+    'Tax Amount',
+    'Sales Tax',
     'V.A.T.',
     'VAT',
+    'GST',
   ];
 
   static const _grossLabels = [
@@ -82,9 +54,15 @@ class InvoiceExtractionService {
     'Amount Due',
     'Balance Due',
     'Grand Total',
+    'Total Invoice', // NEW
     'Invoice Total',
+    'Net Payable',
+    'Amount Payable',
+    'Bill Amount',
+    'Bill Amt',
     'Total Payable',
     'Total Amount',
+    'Total Amt',
     'TOTAL',
   ];
 
@@ -103,6 +81,84 @@ class InvoiceExtractionService {
     'dec': 12,
   };
 
+  static String? detectCurrency(String text) {
+    int count(String pattern, {bool ci = true}) =>
+        RegExp(pattern, caseSensitive: !ci).allMatches(text).length;
+    final explicit = <String, int>{
+      '£': count(r'£|\bGBP\b'),
+      '€': count(r'€|\bEUR\b'),
+      r'$': count(r'\$|\bUSD\b'),
+      '₹': count(r'₹|\bINR\b|\bRs\.?(?=\s*\d)|\bRupees?\b'),
+    };
+    String? best;
+    var max = 0;
+    explicit.forEach((symbol, n) {
+      if (n > max) {
+        max = n;
+        best = symbol;
+      }
+    });
+    if (best != null) return best;
+
+    if (count(
+          r'\bGSTIN?\b|\bCGST\b|\bSGST\b|\bIGST\b|\bFSSAI\b|\bCHENNAI\b|\bMUMBAI\b|\bDELHI\b|\bBANGALORE\b|\bBENGALURU\b|\bHYDERABAD\b|\bKOLKATA\b|\bPUNE\b|\bTAMIL\s*NADU\b|\bINDIA\b',
+        ) >
+        0) {
+      return '₹';
+    }
+    if (count(r'\bVAT\b|\bLtd\b|\bLimited\b|\bPLC\b|\bUnited\s*Kingdom\b') >
+        0) {
+      return '£';
+    }
+    if (count(r'\bUSA\b|\bUnited\s*States\b|\bSales\s*Tax\b') > 0) {
+      return r'$';
+    }
+    return null;
+  }
+
+  static String? detectPaymentMode(String text) {
+    String? classify(String s) {
+      final l = s.toLowerCase();
+      if (RegExp(
+        r'\b(upi|gpay|google\s*pay|phonepe|paytm|visa|master\s*card|mastercard|debit|credit\s*card|card|contactless|wallet|net\s*banking|direct\s*debit)\b',
+      ).hasMatch(l)) {
+        return 'Card';
+      }
+      if (RegExp(r'\bcash\b').hasMatch(l)) {
+        return 'Cash';
+      }
+      return null;
+    }
+
+    final lines = text.split('\n');
+
+    // "Payment Mode: CASH", "Received By Cash", "Paid by UPI" ...
+    final hint = RegExp(
+      r'mode|method|paid\s*by|paid\s*(?:in|with|via)|received\s*by|tender|payment|settled',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      if (hint.hasMatch(line)) {
+        final c = classify(line);
+        if (c != null) return c;
+      }
+    }
+
+    // Tender line: "Cash | 50.00", "UPI PayTm | 288.00", "Card 12.50"
+    final tender = RegExp(
+      r'^\W*(cash|upi|card|visa|mastercard|gpay|phonepe|paytm)\b[^\n]*\d',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final t = line.trim();
+      if (tender.hasMatch(t)) {
+        final c = classify(t);
+        if (c != null) return c;
+      }
+    }
+    return null;
+  }
+
   // ---------------------------------------------------------------------
   // Main entry point
   // ---------------------------------------------------------------------
@@ -115,7 +171,7 @@ class InvoiceExtractionService {
             .where((l) => l.isNotEmpty)
             .toList();
 
-    // NEW: rupee invoices use whole-number amounts (no decimals).
+    // Rupee invoices use whole-number amounts (no decimals).
     final rupee = detectCurrency(text) == '₹';
 
     double? net = _extractAmount(lines, _netLabels, rupee: rupee);
@@ -129,22 +185,22 @@ class InvoiceExtractionService {
     );
     if (gross != null && gross <= 0) gross = null;
 
-    // NEW: "Subtotal" + "Discount" and a "Total" line with no value.
+    // "Subtotal" + "Discount" and a "Total" line with no value.
     if (gross == null && net != null) {
       final disc = _extractAmount(lines, const ['Discount'], rupee: rupee);
       if (disc != null && disc > 0 && disc < net) net = _r2(net - disc);
     }
 
-    // NEW: shop receipts print "Net Amount" as the payable total and have no
+    // Shop receipts print "Net Amount" as the payable total and have no
     // separate VAT line -> gross = net (do not guess from other numbers).
     if (rupee && gross == null && net != null && vat == null) {
       gross = net;
     }
 
-    // NEW: ignore payment lines (cash given, change, card, UPI ...) so the
+    // Ignore payment lines (cash given, change, card, UPI ...) so the
     // inference below never picks "Cash Amount : 100.00" as the total.
     final paymentLine = RegExp(
-      r'cash|card|upi|sodexo|credit|balance|change|tender|loyalty|saved|round',
+      r'cash|card|upi|sodexo|credit|balance|change|tender|\bloy\w*|\bpoin\w*|saved|round',
       caseSensitive: false,
     );
     final allAmounts =
@@ -162,7 +218,7 @@ class InvoiceExtractionService {
     // UK VAT is at most 20%. If the VAT we found is bigger than that, it was
     // read from the wrong place (e.g. a line-item amount). Net and gross are
     // reliable here, so derive VAT from them instead.
-    if (net != null && gross != null && vat != null) {
+    if (net != null && gross != null && vat != null && !rupee) {
       final maxVat = net * 0.21 + 0.02;
       final diff = _r2(gross - net);
       if (vat > maxVat && diff >= 0 && diff <= maxVat) {
@@ -185,7 +241,7 @@ class InvoiceExtractionService {
       vat = _r2(gross - net);
     }
 
-    // NEW: no VAT/GST line (e.g. Indian invoices): total = net.
+    // No VAT/GST line (e.g. Indian invoices): total = net.
     if (rupee && gross == null && net != null) {
       gross = _r2(net + (vat ?? 0));
     }
@@ -228,6 +284,11 @@ class InvoiceExtractionService {
       RegExp(r'\bDel{1,2}[il1]?very\b', caseSensitive: false),
       'Delivery',
     ); // Dellvery / Delvery
+    // NEW: OCR prints "3.292.62" (dots as thousands separator) -> "3,292.62"
+    t = t.replaceAllMapped(
+      RegExp(r'(?<![\d.,])(\d{1,3})\.(\d{3})\.(\d{2})(?!\d)'),
+      (m) => '${m[1]},${m[2]}.${m[3]}',
+    );
     return t;
   }
 
@@ -235,7 +296,7 @@ class InvoiceExtractionService {
   // Supplier
   // ---------------------------------------------------------------------
   static final _supplierNoise = RegExp(
-    r'(\b(TEL|TELEPHONE|PHONE|MOBILE|FAX|WWW|HTTP|HTTPS|EMAIL|E-MAIL|ORDER|VAT|V\.A\.T|DATE|PAGE|COPY|ORIGINAL|DUPLICATE|INVOICE|STATEMENT|RECEIPT|CUSTOMER|ACCOUNT|WEBSITE|VISIT|DELIVERY|CREDIT NOTE)\b|@|\d{5,})',
+    r'(\b(TEL|TELEPHONE|PHONE|MOBILE|FAX|WWW|HTTP|HTTPS|EMAIL|E-MAIL|ORDER|VAT|V\.A\.T|DATE|PAGE|COPY|ORIGINAL|DUPLICATE|INVOICE|STATEMENT|RECEIPT|CUSTOMER|ACCOUNT|WEBSITE|VISIT|DELIVERY|CREDIT NOTE|BILL|GST|GSTIN|TAX|MEMO|CASH MEMO|FSSAI)\b|@|\d{5,})',
     caseSensitive: false,
   );
 
@@ -244,8 +305,40 @@ class InvoiceExtractionService {
     caseSensitive: false,
   );
 
+  /// NEW: words printed by the keyboard / laptop that is in the photo
+  /// background (Zebronics, Shift, Alt, Search ...). Never a supplier.
+  static final _kbNoise = RegExp(
+    r'^(zeb\w*|shift|ctrl|ctri|alt|caps\s*lock|search|enter|tab|esc|backspace)$',
+    caseSensitive: false,
+  );
+
   static String? _extractSupplier(List<String> lines) {
     if (lines.isEmpty) return null;
+
+    // NEW step 0: multi page invoices repeat "<Supplier> <Depot>" right above
+    // the "Tel:-" line on every page ("Parfetts Sheffield"). OCR damages the
+    // word differently each time, so use the most frequent spelling. Needs at
+    // least 2 identical hits, so single page invoices are not affected.
+    final tel = RegExp(r'^\W*Tel\b', caseSensitive: false);
+    final counts = <String, int>{};
+    for (var i = 1; i < lines.length; i++) {
+      if (!tel.hasMatch(lines[i])) continue;
+      final prev = lines[i - 1].split('|').first.trim();
+      final w = RegExp(r'^[A-Za-z][A-Za-z&\-]{3,}').firstMatch(prev)?.group(0);
+      if (w == null ||
+          _kbNoise.hasMatch(w) ||
+          _supplierNoise.hasMatch(w) ||
+          _addressLike.hasMatch(prev)) {
+        continue;
+      }
+      counts[w] = (counts[w] ?? 0) + 1;
+    }
+    if (counts.isNotEmpty) {
+      final best = counts.keys.reduce(
+        (a, b) => counts[b]! > counts[a]! ? b : a,
+      );
+      if (counts[best]! >= 2) return best;
+    }
 
     // Only look above the customer / delivery block so we never return the
     // customer's name (e.g. "VENPA Trading Ltd"). "Ship Te" is OCR for
@@ -264,11 +357,11 @@ class InvoiceExtractionService {
     final head = lines.sublist(0, limit);
 
     final legalSuffix = RegExp(
-      r'\b(LTD\.?|LIMITED|PLC|LLP|INC\.?|LLC|CORP(?:ORATION)?)\b',
+      r'\b(LTD\.?|LIMITED|PLC|LLP|INC\.?|LLC|CORP(?:ORATION)?|PVT\.?|PRIVATE)\b',
       caseSensitive: false,
     );
     final businessWord = RegExp(
-      r'\b(COMPANY|CO\.|WHOLESALE|FOODS?|FOODSERVICE|TRADING|SUPPLIES|DISTRIBUTION|DISTRIBUTORS|TRADERS|GROUP|ENTERPRISES|SERVICES|HOLDINGS|CASH\s*&\s*CARRY|IMPORTS?|EXPORTS?)\b',
+      r'\b(COMPANY|CO\.|WHOLESALE|FOODS?|FOODSERVICE|TRADING|SUPPLIES|DISTRIBUTION|DISTRIBUTORS|TRADERS|GROUP|ENTERPRISES|SERVICES|HOLDINGS|CASH\s*&\s*CARRY|IMPORTS?|EXPORTS?|STORES?|MART|SUPERMARKET|RESTAURANT|HOTEL|PHARMACY|MEDICALS?|BAKERY|CAFE)\b',
       caseSensitive: false,
     );
 
@@ -295,6 +388,7 @@ class InvoiceExtractionService {
       final c = clean(line);
       if (c.length > 3 &&
           legalSuffix.hasMatch(c) &&
+          !_kbNoise.hasMatch(c) &&
           !_supplierNoise.hasMatch(c)) {
         return c;
       }
@@ -305,6 +399,7 @@ class InvoiceExtractionService {
       final c = clean(line);
       if (c.length > 3 &&
           businessWord.hasMatch(c) &&
+          !_kbNoise.hasMatch(c) &&
           !_supplierNoise.hasMatch(c)) {
         return c;
       }
@@ -315,13 +410,18 @@ class InvoiceExtractionService {
       final c = clean(line);
       if (c.length > 3 &&
           RegExp(r'[A-Za-z]{3,}').hasMatch(c) &&
+          !_kbNoise.hasMatch(c) &&
           !_supplierNoise.hasMatch(c) &&
           !_addressLike.hasMatch(c)) {
         return c;
       }
     }
 
-    return lines.first;
+    // Last resort: first line that is not keyboard noise.
+    for (final l in lines) {
+      if (!_kbNoise.hasMatch(l.trim())) return l;
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------
@@ -365,6 +465,13 @@ class InvoiceExtractionService {
       final g = grouped.firstMatch(line);
       if (g != null) return '${g.group(1)}${g.group(2)}${g.group(3)}';
     }
+
+    // Indian GSTIN: 15 chars, e.g. 33AAACW1234A1Z5
+    final gstin = RegExp(
+      r'\b(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b',
+    ).firstMatch(text.toUpperCase());
+    if (gstin != null) return gstin.group(1);
+
     return null;
   }
 
@@ -391,9 +498,11 @@ class InvoiceExtractionService {
   static String? _extractInvoiceNo(List<String> lines) {
     final labelPatterns = [
       r'Invoice\s*(?:No\.?|Number|Num\.?|#|Ref\.?)',
-      r'\bI\w{1,5}ce\s*No\.?', // NEW: OCR-damaged "Ivofce No.", "Involce No."
+      r'\bI\w{1,5}ce\s*No\.?', // OCR-damaged "Ivofce No.", "Involce No."
       r'Inv\.?\s*(?:No\.?|#)',
-      r'Bill(?:ing)?\s*No\.?',
+      r'Bill(?:ing)?\s*(?:No\.?|Number|#)',
+      r'Receipt\s*(?:No\.?|Number|#)',
+      r'(?:Cash\s*)?Memo\s*No\.?',
       r'Document\s*No\.?',
       r'\bNo\.?\s*[:#-]\s*(?=\d)',
     ];
@@ -487,7 +596,7 @@ class InvoiceExtractionService {
       caseSensitive: false,
     );
     final codeLike = RegExp(r'^[A-Za-z]?\d{2,8}$');
-    // CHANGED: "Invoice Details" (right-hand column header) is not a name.
+    // "Invoice Details" (right-hand column header) is not a name.
     bool bad(String v) =>
         v.isEmpty ||
         codeLike.hasMatch(v) ||
@@ -558,11 +667,17 @@ class InvoiceExtractionService {
   }
 
   // ---------------------------------------------------------------------
-  // Date: dd/mm/yyyy, dd-mm-yy, 12 Jan 2025, 2025-01-12
+  // Date
+  //
+  // Supports:
+  //   2025-01-12   2025/01/12   2025.01.12
+  //   12/01/2025   12-01-25     12.01.2025   (dd/mm, auto-swaps mm/dd)
+  //   12 Jan 2025  12th January, 2025
+  //   Jan 12, 2025 January 12th 2025
   // ---------------------------------------------------------------------
   static String? _extractDate(String text) {
     final labelRx = RegExp(
-      r'(?:Tax\s*Date|Invoice\s*Date|Date\s*of\s*Issue|Date)\s*[:|]?\s*([^\n|]{6,24})',
+      r'(?:Tax\s*Date|Invoice\s*Date|Date\s*of\s*Invoice|Bill\s*Date|Date\s*of\s*Issue|Date)\s*[:|]?\s*([^\n|]{6,24})',
       caseSensitive: false,
     );
     for (final m in labelRx.allMatches(text)) {
@@ -576,32 +691,80 @@ class InvoiceExtractionService {
     return null;
   }
 
+  static int? _monthOf(String word) {
+    final w = word.toLowerCase();
+    if (w.length < 3) return null;
+    final month = _months[w.substring(0, 3)];
+    if (month == null) return null;
+    // Must really look like a month name, not "Marketing" / "Decimal".
+    const full = [
+      'january',
+      'february',
+      'march',
+      'april',
+      'may',
+      'june',
+      'july',
+      'august',
+      'september',
+      'sept',
+      'october',
+      'november',
+      'december',
+    ];
+    final ok = full.any((f) => f.startsWith(w)) || w.length == 3;
+    return ok ? month : null;
+  }
+
   static String? _parseDate(String s) {
-    var m = RegExp(r'(\d{4})-(\d{2})-(\d{2})').firstMatch(s);
+    // 1. Year first: 2025-01-12 / 2025/01/12 / 2025.01.12
+    var m = RegExp(
+      r'(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)',
+    ).firstMatch(s);
     if (m != null) {
-      return _buildDate(
+      final d = _buildDate(
         m.group(1)!,
         int.parse(m.group(2)!),
         int.parse(m.group(3)!),
       );
+      if (d != null) return d;
     }
 
-    m = RegExp(r'(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})').firstMatch(s);
-    if (m != null) {
-      return _buildDate(
-        m.group(3)!,
-        int.parse(m.group(2)!),
-        int.parse(m.group(1)!),
-      );
-    }
-
+    // 2. dd/mm/yyyy, dd-mm-yy, dd.mm.yyyy (mm/dd if the 2nd part is > 12)
     m = RegExp(
-      r'(\d{1,2})(?:st|nd|rd|th)?[\s\-]*([A-Za-z]{3,9})\.?,?[\s\-]*(\d{2,4})',
+      r'(?<![\d.])(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})(?!\d)',
     ).firstMatch(s);
     if (m != null) {
-      final month = _months[m.group(2)!.substring(0, 3).toLowerCase()];
+      var day = int.parse(m.group(1)!);
+      var month = int.parse(m.group(2)!);
+      if (month > 12 && day <= 12) {
+        final t = day;
+        day = month;
+        month = t;
+      }
+      final d = _buildDate(m.group(3)!, month, day);
+      if (d != null) return d;
+    }
+
+    // 3. 12 Jan 2025 / 12th January, 2025
+    for (final mm in RegExp(
+      r'(\d{1,2})(?:st|nd|rd|th)?[\s\-]*([A-Za-z]{3,9})\.?,?[\s\-]*(\d{2,4})',
+    ).allMatches(s)) {
+      final month = _monthOf(mm.group(2)!);
       if (month != null) {
-        return _buildDate(m.group(3)!, month, int.parse(m.group(1)!));
+        final d = _buildDate(mm.group(3)!, month, int.parse(mm.group(1)!));
+        if (d != null) return d;
+      }
+    }
+
+    // 4. Jan 12, 2025 / January 12th 2025
+    for (final mm in RegExp(
+      r'([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})',
+    ).allMatches(s)) {
+      final month = _monthOf(mm.group(1)!);
+      if (month != null) {
+        final d = _buildDate(mm.group(3)!, month, int.parse(mm.group(2)!));
+        if (d != null) return d;
       }
     }
     return null;
@@ -611,6 +774,11 @@ class InvoiceExtractionService {
     if (month < 1 || month > 12 || day < 1 || day > 31) return null;
     if (year.length == 2) year = '20$year';
     if (year.length != 4) return null;
+
+    // NEW: OCR garbage such as "v2102" / "2036" must never become a date.
+    final y = int.tryParse(year);
+    if (y == null || y < 2000 || y > DateTime.now().year + 1) return null;
+
     return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
   }
 
@@ -623,15 +791,15 @@ class InvoiceExtractionService {
     bool fromBottom = false,
     bool isVat = false,
     bool strictTotal = false,
-    bool rupee = false, // NEW: whole-number currency (₹)
+    bool rupee = false, // whole-number currency (₹)
   }) {
     final vatIdLine = RegExp(
-      r'V\.?A\.?T\.?\s*(?:Reg|No|Number|#)',
+      r'(?:V\.?A\.?T|GST)\.?\s*(?:Reg|No|Number|#|IN\b)',
       caseSensitive: false,
     );
 
     final vatHeaderLine = RegExp(
-      r'vat\s*rate|unit\s*price|description|\bqty\b|item\s*no',
+      r'vat\s*rate|unit\s*price|description|\bqty\b|item\s*no|breakup|summary|hsn',
       caseSensitive: false,
     );
     final vatBadPrefix = RegExp(
@@ -649,7 +817,7 @@ class InvoiceExtractionService {
     );
     // Lines that look like a total but are not the amount payable.
     final grossSkip = RegExp(
-      r'previous\s*balance|prev\.?\s*balance|outstanding|brought\s*forward|customer\s*total|credit\s*limit|opening\s*balance|\b(?:exc|excl|excluding|ex)[.,]?\s*\(?\s*vat',
+      r'previous\s*balance|prev\.?\s*balance|outstanding|brought\s*forward|customer\s*total|credit\s*limit|opening\s*balance|before\s*(?:tax|vat|gst)|\b(?:exc|excl|excluding|ex)[.,]?\s*\(?\s*vat',
       caseSensitive: false,
     );
 
@@ -700,10 +868,10 @@ class InvoiceExtractionService {
         if (_isAmountOnly(rest)) {
           final fixed = _fixNumericTokens(rest);
 
-          // NEW: thousands separator, no decimals ("F1,062", "{1,061")
+          // Thousands separator, no decimals ("F1,062", "{1,061", "1,23,456")
           // -> whole amount. "F" / "{" are OCR misreads of ₹ and are ignored.
           final comma = RegExp(
-            r'(?<![\d.,])(\d{1,3}(?:,\d{3})+)(?![\d,]|\.\d)',
+            r'(?<![\d.,])(\d{1,2}(?:,\d{2})+,\d{3}|\d{1,3}(?:,\d{3})+)(?![\d,]|\.\d)',
           ).firstMatch(fixed);
           if (comma != null) {
             final v = double.tryParse(comma.group(1)!.replaceAll(',', ''));
@@ -810,40 +978,63 @@ class InvoiceExtractionService {
     return RegExp('(?<![A-Za-z])$chars(?![A-Za-z])', caseSensitive: false);
   }
 
-  // /// All money-looking values in [s]: 9.25, 678.81, 1,234.56, 12,50
-  // static List<double> _parseAmounts(String s) {
-  //   var t = s.replaceAll(RegExp(r'\d+(?:[.,]\d+)?\s*%'), ' '); // drop rates
-  //   t = _fixNumericTokens(t);
-
-  //   final rx = RegExp(r'(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)[.,](\d{2})(?!\d)');
-  //   final out = <double>[];
-  //   for (final m in rx.allMatches(t)) {
-  //     final whole = m.group(1)!.replaceAll(',', '');
-  //     final v = double.tryParse('$whole.${m.group(2)}');
-  //     if (v != null) out.add(v);
-  //   }
-  //   return out;
-  // }
-  /// All money-looking values in [s]:
-  /// 9.25, 678.81, 1,234.56, 12,50, £25.00, GBP 25.00, ₹100
+  // ---------------------------------------------------------------------
+  // PARSE AMOUNTS
+  //
+  // An amount is accepted ONLY if it has:
+  //   - a currency prefix (£ € $ ₹ GBP EUR USD INR Rs), OR
+  //   - exactly 2 decimals (12.50 / 12,50 / 1,234.56)
+  //
+  // Supported number styles:
+  //   1,234.56   (UK / US)
+  //   12,34,567.00 (Indian lakh grouping)
+  //   1.234,56   (European)
+  //   3.292.62   (OCR: dots as thousands separator)
+  //   50,00      (OCR comma decimal)
+  //
+  // Plain integers (phone numbers, GST numbers, dates, qty, "250g") are
+  // ignored. Times like "9.42 PM" are removed first.
+  // ---------------------------------------------------------------------
   static List<double> _parseAmounts(String s) {
-    var t = s.replaceAll(RegExp(r'\d+(?:[.,]\d+)?\s*%'), ' '); // drop rates
+    var t = s
+        .replaceAll(RegExp(r'\d+(?:[.,]\d+)?\s*%'), ' ') // rates
+        .replaceAll(
+          RegExp(r'\b\d{1,2}[.:]\d{2}\s*(?:AM|PM)\b', caseSensitive: false),
+          ' ',
+        ); // times like 9.42 PM
+
+    // NEW: 3.292.62 -> 3,292.62
+    t = t.replaceAllMapped(
+      RegExp(r'(?<![\d.,])(\d{1,3})\.(\d{3})\.(\d{2})(?!\d)'),
+      (m) => '${m[1]},${m[2]}.${m[3]}',
+    );
 
     t = _fixNumericTokens(t);
 
+    // European style 1.234,56 -> 1234.56
+    t = t.replaceAllMapped(
+      RegExp(r'(?<![\d.,])(\d{1,3}(?:\.\d{3})+),(\d{2})(?!\d)'),
+      (m) => '${m.group(1)!.replaceAll('.', '')}.${m.group(2)}',
+    );
+
     final rx = RegExp(
-      r'(?:(?:£|€|\$|₹|GBP|EUR|USD|INR|Rs\.?)\s*)?'
-      r'(\d{1,3}(?:,\d{3})*|\d+)'
-      r'(?:[.,](\d{1,2}))?',
+      r'(?<![\d.,])'
+      r'((?:£|€|\$|₹|GBP|EUR|USD|INR|Rs\.?)\s*)?'
+      r'(\d{1,2}(?:,\d{2})+,\d{3}|\d{1,3}(?:,\d{3})+|\d+)'
+      r'(?:[.,](\d{2})(?!\d))?',
       caseSensitive: false,
     );
 
     final out = <double>[];
 
     for (final m in rx.allMatches(t)) {
-      final whole = m.group(1)!.replaceAll(',', '');
-      final decimal = m.group(2);
+      final hasCurrency = m.group(1) != null;
+      final decimal = m.group(3);
 
+      // Plain integer with no currency symbol: not money.
+      if (!hasCurrency && decimal == null) continue;
+
+      final whole = m.group(2)!.replaceAll(',', '');
       final value = double.tryParse(
         decimal == null ? whole : '$whole.$decimal',
       );
@@ -856,9 +1047,10 @@ class InvoiceExtractionService {
     return out;
   }
 
-  /// Fix O/S/I/l/Z only inside tokens that already contain a digit.
+  /// Fix O/S/I/l/Z only inside tokens that already contain a digit, and never
+  /// when the token is glued to a word (so the "s" in "Rs.50" is untouched).
   static String _fixNumericTokens(String s) {
-    return s.replaceAllMapped(RegExp(r'[0-9OoSsIlZz,.]{3,}'), (m) {
+    return s.replaceAllMapped(RegExp(r'(?<![A-Za-z])[0-9OoSsIlZz,.]{3,}'), (m) {
       final t = m.group(0)!;
       return RegExp(r'\d').hasMatch(t) ? _cleanNumericOcr(t) : t;
     });
@@ -927,6 +1119,7 @@ class InvoiceExtractionService {
     ).firstMatch(text);
     if (netTerm != null) return 'Net ${netTerm.group(1)}';
 
-    return null;
+    // Receipts: "Payment Mode: CASH", "Paid by UPI", "Cash | 50.00" ...
+    return detectPaymentMode(text);
   }
 }

@@ -121,7 +121,7 @@ class InvoiceImagesDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Invoice ${invoice.id}',
+                  'Uploaded Images',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -329,8 +329,13 @@ class InvoiceImagesDialog extends StatelessWidget {
   Widget _thumbs(InvoiceImagesController c, List<dynamic> images) {
     return SizedBox(
       height: Sizes.w(68),
-      child: Obx(
-        () => ListView.separated(
+      child: Obx(() {
+        // FIX: read the observable here, while the Obx builds. ListView calls
+        // itemBuilder later (at layout time), so reading c.index.value only
+        // there makes GetX throw "improper use of a GetX".
+        final current = c.index.value;
+
+        return ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(
             horizontal: Sizes.w(18),
@@ -339,7 +344,7 @@ class InvoiceImagesDialog extends StatelessWidget {
           itemCount: images.length,
           separatorBuilder: (_, _) => SizedBox(width: Sizes.w(8)),
           itemBuilder: (_, i) {
-            final active = i == c.index.value;
+            final active = i == current; // FIX: use the value read above
             return GestureDetector(
               onTap: () => c.goTo(i),
               child: AnimatedOpacity(
@@ -373,8 +378,8 @@ class InvoiceImagesDialog extends StatelessWidget {
               ),
             );
           },
-        ),
-      ),
+        );
+      }),
     );
   }
 
